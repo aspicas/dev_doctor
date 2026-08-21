@@ -1,0 +1,17 @@
+# ShellCheck configuration.
+#
+# The suppressions below are structural, not convenience. Each one is a
+# consequence of the module layout, and each is checked another way.
+
+# SC1090: `bin/dev` loads doctor/ and commands/ modules through a glob so
+# that adding a file needs no edit to the dispatcher. The paths cannot be
+# constant by design.
+disable=SC1090
+
+# SC2034, SC2154: every file is sourced into one process, never executed
+# alone, so shared globals look unassigned when a file is linted in
+# isolation. The M_* manifest fields are the main case. They are
+# initialised in lib/manifest.sh and reset before every load, which the
+# test suite exercises directly.
+disable=SC2034
+disable=SC2154

@@ -1,0 +1,39 @@
+version: 1
+
+meta:
+  name: fixture
+  platforms: [macos, linux]
+
+sections:
+  - id: cli
+    title: Command line
+
+tools:
+  # Flow sequence, nested maps, and a value containing a comma, quotes
+  # and a pipe. All of these have broken naive parsers before.
+  - name: ripgrep
+    binary: rg
+    section: cli
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:ripgrep
+      linux: brew:ripgrep
+    version:
+      command: rg --version | head -n 1
+      expected: "14"
+    integrations: [shell.zsh.fzf, git.delta]
+    doc: Fast, recursive search   # trailing comment must be dropped
+
+  # Block sequence form, and a path that needs tilde expansion.
+  - name: zinit
+    section: cli
+    requirement: optional
+    platforms:
+      - macos
+      - linux
+    detect:
+      path: ~/.local/share/zinit/zinit.git
+    install:
+      macos: script
+      linux: script

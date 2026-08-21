@@ -1,0 +1,1046 @@
+version: 1
+
+environment:
+  name: professional-terminal-dev-environment
+  platform:
+    - macos
+    - linux
+  philosophy:
+    - install_less_tools
+    - strong_integration
+    - active_maintenance
+    - reproducible
+  source_of_truth:
+    configuration: chezmoi
+    versions: mise
+    packages: homebrew
+    projects: git
+
+# ============================================================
+# CORE TOOLCHAIN
+# ============================================================
+
+tools:
+
+  # ----------------------------------------------------------
+  # SHELL
+  # ----------------------------------------------------------
+
+  shell:
+    - name: zsh
+      category: shell
+      type: native
+      required: true
+      purpose: interactive_shell
+      config:
+        - ~/.config/zsh/.zshrc
+        - ~/.config/zsh/aliases.zsh
+        - ~/.config/zsh/exports.zsh
+        - ~/.config/zsh/functions.zsh
+        - ~/.config/zsh/local.zsh
+
+    - name: zinit
+      category: shell.plugin_manager
+      install: script
+      repository: zdharma-continuum/zinit
+      required: true
+      manages:
+        - zsh-autosuggestions
+        - fast-syntax-highlighting
+        - fzf-tab
+
+    - name: zsh-autosuggestions
+      category: shell.plugin
+      manager: zinit
+      repository: zsh-users/zsh-autosuggestions
+
+    - name: fast-syntax-highlighting
+      category: shell.plugin
+      manager: zinit
+      repository: zdharma-continuum/fast-syntax-highlighting
+
+    - name: fzf-tab
+      category: shell.plugin
+      manager: zinit
+      repository: Aloxaf/fzf-tab
+
+    - name: starship
+      category: shell.prompt
+      install: homebrew
+      required: true
+
+  # ----------------------------------------------------------
+  # TERMINAL
+  # ----------------------------------------------------------
+
+  terminal:
+    - name: ghostty
+      category: terminal
+      install:
+        macos: homebrew_cask
+        linux: native_or_official
+      required: true
+      config: ~/.config/ghostty/config
+
+  # ----------------------------------------------------------
+  # MULTIPLEXER
+  # ----------------------------------------------------------
+
+  multiplexer:
+    - name: tmux
+      category: terminal.multiplexer
+      install: homebrew
+      required: true
+      config: ~/.tmux.conf
+      plugins:
+        - tpm
+        - tmux-resurrect
+        - tmux-continuum
+        - catppuccin/tmux
+
+    - name: tpm
+      category: tmux.plugin_manager
+      type: plugin_manager
+
+    - name: tmux-resurrect
+      category: tmux.plugin
+      purpose: session_persistence
+
+    - name: tmux-continuum
+      category: tmux.plugin
+      purpose: automatic_session_persistence
+
+  # ----------------------------------------------------------
+  # EDITOR
+  # ----------------------------------------------------------
+
+  editor:
+    - name: neovim
+      category: editor
+      install: homebrew
+      required: true
+      config: ~/.config/nvim
+
+    - name: lazyvim
+      category: editor.distribution
+      base: neovim
+      repository: LazyVim/starter
+      required: true
+
+    - name: mason.nvim
+      category: editor.tool_manager
+      parent: lazyvim
+      purpose:
+        - lsp
+        - formatter
+        - linter
+        - debugger_adapter
+
+    - name: treesitter
+      category: editor.syntax
+      parent: neovim
+      purpose: ast_based_syntax_highlighting
+
+    - name: nvim-dap
+      category: editor.debugger
+      parent: neovim
+      purpose: debugging
+
+    - name: nvim-dap-ui
+      category: editor.debugger_ui
+      parent: nvim-dap
+
+    - name: gitsigns.nvim
+      category: editor.git
+      parent: neovim
+
+    - name: telescope.nvim
+      category: editor.navigation
+      parent: neovim
+
+    - name: flash.nvim
+      category: editor.navigation
+      parent: neovim
+
+    - name: refactoring.nvim
+      category: editor.refactoring
+      parent: neovim
+
+  # ----------------------------------------------------------
+  # SEARCH / NAVIGATION
+  # ----------------------------------------------------------
+
+  navigation:
+    - name: ripgrep
+      binary: rg
+      category: cli.search
+      replaces: grep
+      install: homebrew
+
+    - name: fd
+      category: cli.search
+      replaces: find
+      install: homebrew
+
+    - name: fzf
+      category: cli.search
+      purpose: fuzzy_finding
+      integrations:
+        - zsh
+        - git
+        - tmux
+        - neovim
+      install: homebrew
+
+    - name: zoxide
+      category: cli.navigation
+      replaces: cd
+      install: homebrew
+
+    - name: bat
+      category: cli.files
+      replaces: cat
+      install: homebrew
+
+    - name: eza
+      category: cli.files
+      replaces: ls
+      install: homebrew
+
+    - name: dust
+      category: cli.filesystem
+      replaces: du
+      install: homebrew
+
+    - name: procs
+      category: cli.processes
+      replaces: ps
+      install: homebrew
+
+    - name: btop
+      category: cli.system_monitor
+      replaces: top
+      install: homebrew
+
+  # ----------------------------------------------------------
+  # DATA / TEXT
+  # ----------------------------------------------------------
+
+  data:
+    - name: jq
+      category: cli.json
+      install: homebrew
+      purpose:
+        - json_processing
+        - api_cli_workflows
+
+    - name: yq
+      category: cli.yaml
+      install: homebrew
+      purpose:
+        - yaml_processing
+        - ci_configuration
+        - infrastructure
+
+    - name: xh
+      category: cli.http
+      install: homebrew
+      optional: true
+      purpose: manual_api_testing
+
+    - name: sed
+      category: cli.text
+      type: system
+      keep: true
+      reason: portability
+
+    - name: awk
+      category: cli.text
+      type: system
+      keep: true
+      reason: portability_and_text_processing
+
+    - name: curl
+      category: cli.http
+      type: system
+      keep: true
+      reason: scripting_and_portability
+
+  # ----------------------------------------------------------
+  # DEVELOPMENT TOOLCHAIN / RUNTIMES
+  # ----------------------------------------------------------
+
+  runtime_manager:
+    - name: mise
+      category: runtime_manager
+      install: homebrew
+      required: true
+      config:
+        project: .mise.toml
+        global: ~/.config/mise/config.toml
+      manages:
+        - python
+        - node
+        - rust
+        - go
+        - java
+        - ruby
+        - php
+        - dotnet
+        - kotlin
+
+  runtimes:
+
+    - name: python
+      category: language
+      manager: mise
+      package_manager: uv
+      default_version: "3.13"
+
+    - name: node
+      category: language.runtime
+      manager: mise
+      package_manager: pnpm
+      default_version: "22"
+
+    - name: rust
+      category: language
+      manager: mise
+      package_manager: cargo
+      version: stable
+
+    - name: go
+      category: language
+      manager: mise
+      package_manager: go_modules
+      default_version: "1.23"
+
+    - name: java
+      category: language.runtime
+      manager: mise
+      distribution: temurin
+      default_version: "21"
+      package_managers:
+        - maven
+        - gradle
+
+    - name: ruby
+      category: language
+      manager: mise
+      package_manager: bundler
+      default_version: "3.3"
+
+    - name: php
+      category: language
+      manager: mise
+      package_manager: composer
+      default_version: "8.3"
+
+    - name: dotnet
+      category: language.runtime
+      manager: mise
+      package_manager: dotnet
+      default_version: "8"
+
+    - name: kotlin
+      category: language
+      manager: mise
+      package_manager: gradle
+      version: latest
+
+    - name: swift
+      category: language
+      manager: xcode
+      package_manager: swift_package_manager
+      native: true
+
+    - name: bash
+      category: shell
+      native: true
+      purpose:
+        - scripts
+        - ci
+        - linux_compatibility
+      tooling:
+        - shellcheck
+
+    - name: sql
+      category: language
+      environment: containers
+
+  # ----------------------------------------------------------
+  # LANGUAGE PACKAGE MANAGERS
+  # ----------------------------------------------------------
+
+  package_managers:
+
+    - name: uv
+      language: python
+      install: homebrew_or_mise
+      purpose:
+        - dependency_management
+        - virtual_environments
+        - lockfiles
+
+    - name: pnpm
+      language: javascript
+      purpose:
+        - dependency_management
+        - workspace_management
+        - lockfiles
+
+    - name: cargo
+      language: rust
+      native: true
+
+    - name: composer
+      language: php
+      native: true
+
+    - name: bundler
+      language: ruby
+      native: true
+
+    - name: gradle
+      languages:
+        - java
+        - kotlin
+
+    - name: maven
+      language: java
+
+  # ----------------------------------------------------------
+  # PROJECT ENVIRONMENTS
+  # ----------------------------------------------------------
+
+  project_environment:
+    - name: direnv
+      category: environment
+      install: homebrew
+      required: true
+      config: .envrc
+      integrations:
+        - mise
+
+    - name: mise
+      category: environment.runtime
+      required: true
+
+    - name: dotenv
+      category: environment.variables
+      implementation: direnv
+      files:
+        - .env
+        - .env.example
+
+  # ----------------------------------------------------------
+  # GIT
+  # ----------------------------------------------------------
+
+  git:
+    - name: git
+      category: version_control
+      install: homebrew
+      required: true
+
+    - name: git-delta
+      category: git.diff
+      install: homebrew
+
+    - name: lazygit
+      category: git.tui
+      install: homebrew
+
+    - name: gh
+      category: git.github
+      install: homebrew
+      purpose:
+        - pull_requests
+        - issues
+        - ci
+        - github_management
+
+    - name: lefthook
+      category: git.hooks
+      install: homebrew
+      purpose:
+        - pre_commit
+        - lint
+        - format
+        - security_checks
+
+  git_configuration:
+    editor: nvim
+    pager: delta
+    pull_strategy: rebase
+    fetch_prune: true
+    default_branch: main
+    commit_signing:
+      type: ssh
+      enabled: true
+
+  # ----------------------------------------------------------
+  # CONTAINERS
+  # ----------------------------------------------------------
+
+  containers:
+    - name: orbstack
+      category: containers
+      install:
+        macos: homebrew
+        linux: docker_engine
+      required: conditional
+      compatible_with:
+        - docker_cli
+        - docker_compose
+      services:
+        - postgresql
+        - redis
+        - kafka
+        - elasticsearch
+
+    - name: lazydocker
+      category: containers.tui
+      install: homebrew
+      optional: true
+
+  # ----------------------------------------------------------
+  # AUTOMATION
+  # ----------------------------------------------------------
+
+  automation:
+
+    - name: just
+      category: task_runner
+      install: homebrew
+      required: true
+      config: justfile
+
+  # ----------------------------------------------------------
+  # DOTFILES
+  # ----------------------------------------------------------
+
+  dotfiles:
+
+    - name: chezmoi
+      category: configuration_management
+      install: homebrew
+      required: true
+      repository: private_git_repository
+      manages:
+        - zsh
+        - tmux
+        - neovim
+        - ghostty
+        - git
+        - homebrew
+        - machine_specific_configuration
+
+  # ----------------------------------------------------------
+  # SECURITY
+  # ----------------------------------------------------------
+
+  security:
+
+    - name: 1password-cli
+      binary: op
+      category: secrets
+      install: homebrew_cask
+      purpose:
+        - runtime_secret_injection
+        - token_management
+      rule: never_commit_secrets
+
+    - name: secretive
+      category: ssh_agent
+      platform: macos
+      purpose: secure_enclave_ssh_keys
+      install: official
+
+    - name: gitleaks
+      category: secret_scanning
+      install: homebrew
+      integration:
+        - lefthook
+
+    - name: shellcheck
+      category: security.lint
+      purpose: shell_script_analysis
+
+  security_policy:
+    ssh_key_type: ed25519
+    one_key_per_device: true
+    commit_signing: ssh
+    secrets_in_repository: false
+    chmod_777: forbidden
+    remote_scripts:
+      curl_pipe_bash: forbidden
+    dependency_auditing:
+      - npm_audit
+      - cargo_audit
+      - pip_audit
+
+  # ----------------------------------------------------------
+  # OBSERVABILITY
+  # ----------------------------------------------------------
+
+  observability:
+
+    - name: btop
+      category: system_monitor
+      install: homebrew
+
+    - name: bandwhich
+      category: network_monitor
+      install: homebrew
+      optional: true
+
+    - name: hyperfine
+      category: benchmarking
+      install: homebrew
+
+    - name: lnav
+      category: log_viewer
+      install: homebrew
+      optional: true
+
+    - name: lazydocker
+      category: container_monitor
+      install: homebrew
+      optional: true
+
+
+# ============================================================
+# LSP / DEBUGGING TOOLCHAIN
+# ============================================================
+
+language_servers:
+
+  python:
+    lsp:
+      - pyright
+      - ruff
+    dap:
+      - debugpy
+
+  javascript:
+    lsp:
+      - tsserver
+
+  typescript:
+    lsp:
+      - tsserver
+
+  rust:
+    lsp:
+      - rust-analyzer
+    dap:
+      - codelldb
+
+  go:
+    lsp:
+      - gopls
+    dap:
+      - delve
+
+  java:
+    lsp:
+      - jdtls
+
+  cpp:
+    lsp:
+      - clangd
+    dap:
+      - codelldb
+
+  c:
+    lsp:
+      - clangd
+    dap:
+      - codelldb
+
+  ruby:
+    lsp:
+      - solargraph
+
+  php:
+    lsp:
+      - intelephense
+
+  csharp:
+    lsp:
+      - omnisharp
+
+  swift:
+    lsp:
+      - sourcekit-lsp
+    note: provided_by_xcode
+
+
+# ============================================================
+# IOS / ANDROID / FLUTTER
+# ============================================================
+
+mobile:
+
+  ios:
+    platform: macos
+    toolchain:
+      - xcode
+      - swift
+      - sourcekit-lsp
+      - swift_package_manager
+      - xcodebuild
+      - simulators
+    automation:
+      - fastlane
+
+  android:
+    toolchain:
+      - java
+      - android_sdk
+      - adb
+      - emulator
+      - gradle
+    manager:
+      runtime: mise
+
+  flutter:
+    runtime:
+      - flutter
+      - dart
+    project_versioning:
+      strategy: project_specific
+    package_manager:
+      - pub
+    note: flutter_version_management_is_not_explicitly_defined_in_source
+
+
+# ============================================================
+# PROJECT STANDARD
+# ============================================================
+
+project_standard:
+
+  required_files:
+
+    - ".mise.toml"
+    - ".envrc"
+    - ".env.example"
+    - ".gitignore"
+    - "justfile"
+
+  optional_files:
+
+    - "docker-compose.yml"
+
+  runtime:
+    managed_by: mise
+
+  dependencies:
+    managed_by: native_language_package_manager
+
+  environment:
+    managed_by: direnv
+
+  services:
+    managed_by: orbstack
+
+  tasks:
+    managed_by: just
+
+  source_control:
+    managed_by: git
+
+
+# ============================================================
+# CLI ALIASES
+# ============================================================
+
+aliases:
+
+  ls: "eza --icons --group-directories-first"
+  ll: "eza -l --icons --group-directories-first"
+  la: "eza -la --icons --group-directories-first"
+  tree: "eza --tree --icons"
+
+  cat: "bat --paging=never"
+  du: "dust"
+  ps: "procs"
+  grep: "rg"
+  vim: "nvim"
+
+  g: "git"
+  lg: "lazygit"
+  top: "btop"
+
+
+# ============================================================
+# OBSERVABILITY / DIAGNOSTICS
+# ============================================================
+
+diagnostics:
+
+  command: "dev doctor"
+
+  checks:
+
+    - shell
+    - terminal
+    - tmux
+    - neovim
+    - mise
+    - runtimes
+    - package_managers
+    - git
+    - containers
+    - mobile_toolchains
+    - security_tools
+
+  expected_output:
+    format: human_readable
+    show:
+      - installed_version
+      - expected_version
+      - status
+      - missing_dependencies
+
+
+# ============================================================
+# INSTALLATION
+# ============================================================
+
+installation:
+
+  package_manager:
+    primary: homebrew
+
+  macos:
+
+    formulae:
+      - starship
+      - tmux
+      - neovim
+      - eza
+      - bat
+      - ripgrep
+      - fd
+      - dust
+      - procs
+      - btop
+      - zoxide
+      - jq
+      - yq
+      - fzf
+      - hyperfine
+      - xh
+      - mise
+      - direnv
+      - git
+      - git-delta
+      - lazygit
+      - gh
+      - lefthook
+      - just
+      - chezmoi
+      - gitleaks
+      - bandwhich
+      - lnav
+      - lazydocker
+
+    casks:
+      - ghostty
+      - orbstack
+      - 1password-cli
+
+  linux:
+
+    package_manager:
+      primary: homebrew
+
+    container_runtime:
+      - docker_engine
+
+    platform_specific:
+      - ssh_agent
+      - clipboard
+      - fonts
+
+
+# ============================================================
+# DOTFILES STRUCTURE
+# ============================================================
+
+chezmoi:
+
+  repository:
+    private: true
+
+  source_directory: "~/.local/share/chezmoi"
+
+  structure:
+
+    - ".chezmoi.toml.tmpl"
+    - ".chezmoiscripts/"
+    - "dot_config/zsh/"
+    - "dot_config/nvim/"
+    - "dot_config/ghostty/config.tmpl"
+    - "dot_config/tmux/tmux.conf"
+    - "dot_gitconfig.tmpl"
+    - "Brewfile.tmpl"
+
+  machine_variables:
+
+    - email
+    - work_machine
+
+  detected_variables:
+
+    - os
+
+
+# ============================================================
+# REPRODUCIBILITY
+# ============================================================
+
+reproducibility:
+
+  source_of_truth:
+    tools: this_file
+    dotfiles: chezmoi
+    runtime_versions: mise
+    dependencies: lockfiles
+    services: docker_compose
+    secrets: 1password
+
+  new_machine:
+
+    command: "chezmoi init --apply"
+
+  update:
+
+    command: "chezmoi update"
+
+  validation:
+
+    recommended:
+      - clean_linux_container
+      - clean_vm
+      - clean_macos_machine
+
+
+# ============================================================
+# TOOL RELATIONSHIPS
+# ============================================================
+
+integrations:
+
+  shell:
+    - mise
+    - zoxide
+    - direnv
+    - fzf
+    - starship
+
+  neovim:
+    - lazyvim
+    - mason.nvim
+    - treesitter
+    - nvim-dap
+    - telescope
+    - gitsigns
+    - fzf
+
+  git:
+    - delta
+    - lazygit
+    - gh
+    - lefthook
+    - gitleaks
+
+  projects:
+    - mise
+    - direnv
+    - just
+    - git
+
+  containers:
+    - orbstack
+    - docker
+    - docker_compose
+    - lazydocker
+
+  dotfiles:
+    - chezmoi
+    - git
+    - homebrew
+
+
+# ============================================================
+# TOOLS NOT TO REPLACE
+# ============================================================
+
+keep_native:
+
+  - sed
+  - awk
+  - curl
+  - bash
+  - swift
+  - xcode
+  - swift_package_manager
+  - git
+  - ssh
+
+
+# ============================================================
+# OPTIONAL / CONDITIONAL
+# ============================================================
+
+optional:
+
+  - xh
+  - bandwhich
+  - lnav
+  - lazydocker
+  - containers
+  - devcontainers
+  - nix
+
+  nix:
+    status: not_in_base_environment
+    reason: mise_direnv_orbstack_cover_current_needs
+
+  devcontainers:
+    status: conditional
+    reason: useful_when_team_standardizes_on_vscode
+
+
+# ============================================================
+# MAINTENANCE
+# ============================================================
+
+maintenance:
+
+  regular:
+
+    homebrew:
+      command: "brew update && brew upgrade"
+
+    mise:
+      command: "mise upgrade"
+
+    neovim:
+      command: ":Lazy sync"
+
+    tmux:
+      command: "prefix + I"
+
+  quarterly:
+    - audit_brew_list
+    - remove_unused_tools
+    - verify_dotfiles
+    - verify_machine_reproducibility
+
+  principle:
+    unused_tools_should_be_removed: true

@@ -1,0 +1,27 @@
+version: 1
+
+sections:
+  - id: shell
+    title: Shell
+
+tools:
+  - name: good
+    binary: good
+    section: shell
+    requirement: required
+
+  # Unknown section, unknown requirement level, unknown install provider
+  # and an unknown key. Each one must be reported.
+  - name: bad
+    binary: bad
+    section: nowhere
+    requirement: mandatory
+    instal:
+      macos: brew:bad
+    install:
+      macos: snap:bad
+
+  # Duplicate name, and detectable by nothing at all.
+  - name: good
+    section: shell
+    requirement: optional

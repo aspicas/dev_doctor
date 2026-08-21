@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# ============================================================
+# dev — the interface to this workstation.
+# ============================================================
+#
+# Everything is driven by toolchain.yaml. `dev install` puts the machine
+# into the declared state, `dev doctor` reports how far it has drifted,
+# and both read the same file so the two can never disagree.
+# ============================================================
+
+set -uo pipefail
+
+# Resolve the real location even when invoked through a symlink in ~/bin.
+dev::resolve_root() {
+    local source="${BASH_SOURCE[0]}"
+    local directory
+
+    while [ -L "$source" ]; do
+        directory="$(cd -P "$(dirname "$source")" && pwd)"
+        source="$(readlink "$source")"
+        case "$source" in
+            /*) ;;
+            *) source="$directory/$source" ;;
+        esac
+    done
+
+    cd -P "$(dirname "$source")/.." && pwd
+}
+
+DEV_ROOT="${DEV_ROOT:-$(dev::resolve_root)}"
+export DEV_ROOT
+
+DEV_VERSION="1.0.0"
+
+# shellcheck source=lib/core.sh
+. "$DEV_ROOT/lib/core.sh"
+# shellcheck source=lib/platform.sh
+. "$DEV_ROOT/lib/platform.sh"
+# shellcheck source=lib/version.sh
+. "$DEV_ROOT/lib/version.sh"
+# shellcheck source=lib/report.sh
+. "$DEV_ROOT/lib/report.sh"
+# shellcheck source=lib/manifest.sh
+. "$DEV_ROOT/lib/manifest.sh"
+# shellcheck source=lib/checks.sh
+. "$DEV_ROOT/lib/checks.sh"
+
+for module in "$DEV_DOCTOR_DIR"/*.sh; do
+    [ -f "$module" ] && . "$module"
+done
+
+for module in "$DEV_COMMANDS_DIR"/*.sh; do
+    [ -f "$module" ] && . "$module"
+done
+unset module
+
+dev::usage() {
+    cat <<'USAGE'
+dev — developer workstation interface
+
+Usage: dev <command> [options]
+
+Commands:
+  doctor      compare the declared toolchain against reality
+  install     install what the manifest declares and this machine lacks
+  update      update packages, runtimes and dotfiles
+  tools       list everything the manifest declares
+  versions    declared versions against installed versions
+  setup       guided configuration for things doctor will not automate
+  manifest    validate or inspect toolchain.yaml
+  help        show this help
+
+Run `dev <command> --help` for the options of a single command.
+
+Environment:
+  DEV_MANIFEST   path to the manifest, defaults to <root>/toolchain.yaml
+  DEV_DEBUG      set to any value to print internal diagnostics
+  NO_COLOR       set to any value to disable colour
+USAGE
+}
+
+main() {
+    local command="${1:-help}"
+    [ $# -gt 0 ] && shift
+
+    platform::init
+    state::init
+
+    case "$command" in
+        doctor)   doctor::main "$@" ;;
+        install)  install::main "$@" ;;
+        update)   update::main "$@" ;;
+        tools)    tools::main "$@" ;;
+        versions) versions::main "$@" ;;
+        setup)    setup::main "$@" ;;
+        manifest) manifest_cmd::main "$@" ;;
+        version|--version|-V) printf 'dev %s\n' "$DEV_VERSION" ;;
+        help|--help|-h) dev::usage ;;
+        *)
+            dev::error "unknown command: $command"
+            dev::usage >&2
+            exit 64
+            ;;
+    esac
+}
+
+main "$@"

@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+# ============================================================
+# `dev install`  — bring the machine up to the manifest.
+# `dev update`   — refresh what is already installed.
+# ============================================================
+#
+# `dev install` and `dev doctor` read the same manifest, which is the
+# point of the whole design: there is no second list of packages that
+# can drift away from the one being verified.
+# ============================================================
+
+install::usage() {
+    cat <<'USAGE'
+Usage: dev install [options]
+
+Install everything declared in toolchain.yaml that is missing here.
+
+Options:
+  --dry-run           print what would happen and change nothing
+  --yes               do not prompt
+  --section <id>      restrict to a single section
+  --requirement <l>   only required, recommended or optional entries
+  --write-brewfile    regenerate the Brewfile from the manifest
+  -h, --help          show this help
+USAGE
+}
+
+install::main() {
+    local dry_run="" assume_yes="" only_section="" only_requirement=""
+
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --dry-run|-n) dry_run=1 ;;
+            --yes|-y) assume_yes=1 ;;
+            --section) shift; only_section="${1:-}" ;;
+            --requirement) shift; only_requirement="${1:-}" ;;
+            --write-brewfile) style::init auto; manifest::load; install::write_brewfile; return $? ;;
+            -h|--help) install::usage; return 0 ;;
+            *) dev::error "unknown option: $1"; return 64 ;;
+        esac
+        shift
+    done
+
+    style::init auto
+    manifest::load
+    manifest::lint || dev::die "refusing to install from an invalid manifest"
+
+    local index directive command reply
+    local names=() commands=() manual=()
+
+    for index in $(manifest::tool_indices); do
+        manifest::tool_load "$index"
+        platform::supported "$M_platforms" || continue
+        [ -n "$only_section" ] && [ "$M_section" != "$only_section" ] && continue
+        [ -n "$only_requirement" ] && [ "$M_requirement" != "$only_requirement" ] && continue
+        [ "$M_requirement" = "optional" ] && [ -z "$only_requirement" ] && continue
+
+        check::present && continue
+
+        directive="$(manifest::install_directive)"
+        [ -z "$directive" ] && continue
+
+        if command="$(fix::command_for "$directive" "${M_version_expected:-latest}")"; then
+            names+=("$M_name")
+            commands+=("$command")
+        else
+            manual+=("$M_name: $(fix::advice_for "$directive")")
+        fi
+    done
+
+    if [ "${#commands[@]}" -eq 0 ] && [ "${#manual[@]}" -eq 0 ]; then
+        printf '\n%sEverything declared for this platform is already installed.%s\n\n' \
+            "$C_GREEN" "$C_RESET"
+        return 0
+    fi
+
+    if [ "${#commands[@]}" -gt 0 ]; then
+        printf '\n%sMissing%s\n' "$C_BOLD" "$C_RESET"
+        local i=0
+        while [ "$i" -lt "${#commands[@]}" ]; do
+            printf '  %-18s %s\n' "${names[$i]}" "${commands[$i]}"
+            i=$((i + 1))
+        done
+    fi
+
+    if [ "${#manual[@]}" -gt 0 ]; then
+        printf '\n%sNeeds a human%s\n' "$C_BOLD" "$C_RESET"
+        local entry
+        for entry in "${manual[@]}"; do
+            printf '  %s\n' "$entry"
+        done
+    fi
+
+    printf '\n'
+
+    [ -n "$dry_run" ] && return 0
+    [ "${#commands[@]}" -eq 0 ] && return 0
+
+    if [ -z "$assume_yes" ]; then
+        if [ ! -t 0 ]; then
+            dev::error "install needs a terminal to confirm, or pass --yes"
+            return 1
+        fi
+        printf 'Install %d package(s)? [y/N] ' "${#commands[@]}"
+        read -r reply
+        case "$reply" in
+            y|Y|yes|YES) ;;
+            *) printf 'Nothing was changed.\n'; return 0 ;;
+        esac
+    fi
+
+    local failures=0
+    for command in "${commands[@]}"; do
+        printf '\n%s→ %s%s\n' "$C_BLUE" "$command" "$C_RESET"
+        /bin/sh -c "$command" || failures=$((failures + 1))
+    done
+
+    printf '\n%sRun `dev doctor` to verify.%s\n' "$C_DIM" "$C_RESET"
+    [ "$failures" -gt 0 ] && return 1
+    return 0
+}
+
+# The Brewfile is generated, never hand written, so that homebrew and
+# the manifest cannot disagree.
+install::write_brewfile() {
+    local brewfile
+    local index directive provider package
+    local formulae="" casks=""
+
+    brewfile="$DEV_ROOT/$(manifest::meta meta.brewfile)"
+
+    for index in $(manifest::tool_indices); do
+        manifest::tool_load "$index"
+        platform::supported "$M_platforms" || continue
+
+        directive="$(manifest::install_directive)"
+        provider="${directive%%:*}"
+        package="${directive#*:}"
+        [ "$package" = "$directive" ] && continue
+
+        case "$provider" in
+            brew) formulae="$formulae$package"$'\n' ;;
+            brew-cask) casks="$casks$package"$'\n' ;;
+        esac
+    done
+
+    {
+        printf '# Generated by `dev install --write-brewfile`.\n'
+        printf '# Source of truth: toolchain.yaml. Do not edit by hand.\n\n'
+        printf '%s' "$formulae" | sort -u | while IFS= read -r package; do
+            [ -n "$package" ] && printf 'brew "%s"\n' "$package"
+        done
+        printf '\n'
+        printf '%s' "$casks" | sort -u | while IFS= read -r package; do
+            [ -n "$package" ] && printf 'cask "%s"\n' "$package"
+        done
+    } > "$brewfile"
+
+    printf 'Wrote %s\n' "$brewfile"
+}
+
+# ------------------------------------------------------------
+
+update::usage() {
+    cat <<'USAGE'
+Usage: dev update [--yes]
+
+Update the package manager, the runtimes and the dotfiles.
+USAGE
+}
+
+update::main() {
+    local assume_yes="" reply
+
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --yes|-y) assume_yes=1 ;;
+            -h|--help) update::usage; return 0 ;;
+            *) dev::error "unknown option: $1"; return 64 ;;
+        esac
+        shift
+    done
+
+    style::init auto
+
+    local steps=()
+    have brew && steps+=("brew update && brew upgrade")
+    have mise && steps+=("mise upgrade")
+    have chezmoi && steps+=("chezmoi update --apply")
+
+    if [ "${#steps[@]}" -eq 0 ]; then
+        dev::die "none of brew, mise or chezmoi are installed"
+    fi
+
+    printf '\n%sUpdate plan%s\n' "$C_BOLD" "$C_RESET"
+    local step
+    for step in "${steps[@]}"; do
+        printf '  %s\n' "$step"
+    done
+    printf '\n'
+
+    if [ -z "$assume_yes" ]; then
+        if [ ! -t 0 ]; then
+            dev::error "update needs a terminal to confirm, or pass --yes"
+            return 1
+        fi
+        printf 'Continue? [y/N] '
+        read -r reply
+        case "$reply" in
+            y|Y|yes|YES) ;;
+            *) printf 'Nothing was changed.\n'; return 0 ;;
+        esac
+    fi
+
+    local failures=0
+    for step in "${steps[@]}"; do
+        printf '\n%s→ %s%s\n' "$C_BLUE" "$step" "$C_RESET"
+        /bin/sh -c "$step" || failures=$((failures + 1))
+    done
+
+    [ "$failures" -gt 0 ] && return 1
+    return 0
+}

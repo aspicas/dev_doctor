@@ -1,0 +1,854 @@
+# ============================================================
+# EXECUTABLE TOOLCHAIN MANIFEST
+# ============================================================
+#
+# This file is the single source of truth for `dev install` and
+# `dev doctor`. It is machine readable and parsed by lib/manifest.awk.
+#
+# The narrative description of the environment (philosophy, aliases,
+# project standards, maintenance policy) lives in
+# docs/environment.reference.yaml and is intentionally NOT executable.
+#
+# Supported schema is documented in docs/manifest-schema.md and enforced
+# by `dev manifest lint`. Keep it boring: the parser accepts a small,
+# strict subset of YAML so that diagnostics never depend on `yq` being
+# installed on a machine that may itself be broken.
+# ============================================================
+
+version: 1
+
+meta:
+  name: professional-terminal-dev-environment
+  platforms: [macos, linux]
+  brewfile: Brewfile
+
+# ------------------------------------------------------------
+# Report layout. Tools are grouped and printed in this order.
+# ------------------------------------------------------------
+
+sections:
+  - id: shell
+    title: Shell
+  - id: terminal
+    title: Terminal
+  - id: editor
+    title: Editor
+  - id: cli
+    title: Command line
+  - id: data
+    title: Data and text
+  - id: environment
+    title: Runtime and environment
+  - id: runtimes
+    title: Language runtimes
+  - id: package_managers
+    title: Package managers
+  - id: git
+    title: Git
+  - id: containers
+    title: Containers
+  - id: automation
+    title: Automation
+  - id: dotfiles
+    title: Dotfiles
+  - id: security
+    title: Security
+  - id: observability
+    title: Observability
+  - id: mobile
+    title: Mobile toolchains
+
+# ------------------------------------------------------------
+# Tools
+#
+#   requirement: required     missing is a failure
+#                recommended  missing is a warning
+#                optional     missing is skipped
+#
+#   install:     <provider>:<package>
+#                brew, brew-cask, mise, xcode, script, manual, system
+#                Only brew, brew-cask and mise are auto installable.
+# ------------------------------------------------------------
+
+tools:
+
+  # ---------------- shell ----------------
+
+  - name: zsh
+    binary: zsh
+    section: shell
+    category: shell
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: system
+      linux: system
+    integrations: [shell.zsh.config]
+    doc: Interactive shell
+
+  - name: zinit
+    section: shell
+    category: shell.plugin_manager
+    requirement: required
+    platforms: [macos, linux]
+    detect:
+      path: ~/.local/share/zinit/zinit.git
+    install:
+      macos: script
+      linux: script
+    integrations: [shell.zsh.plugins]
+    doc: Zsh plugin manager
+
+  - name: starship
+    binary: starship
+    section: shell
+    category: shell.prompt
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:starship
+      linux: brew:starship
+    integrations: [shell.zsh.starship]
+    doc: Cross shell prompt
+
+  # ---------------- terminal ----------------
+
+  - name: ghostty
+    binary: ghostty
+    section: terminal
+    category: terminal
+    requirement: required
+    platforms: [macos, linux]
+    detect:
+      path: /Applications/Ghostty.app
+    install:
+      macos: brew-cask:ghostty
+      linux: manual
+    integrations: [ghostty.config]
+    doc: Terminal emulator
+
+  - name: tmux
+    binary: tmux
+    section: terminal
+    category: terminal.multiplexer
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:tmux
+      linux: brew:tmux
+    version:
+      command: tmux -V
+    integrations: [tmux.config, tmux.tpm]
+    doc: Terminal multiplexer
+
+  # ---------------- editor ----------------
+
+  - name: neovim
+    binary: nvim
+    section: editor
+    category: editor
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:neovim
+      linux: brew:neovim
+    integrations: [nvim.config, nvim.lazyvim, nvim.providers]
+    doc: Primary editor
+
+  # ---------------- cli ----------------
+
+  - name: ripgrep
+    binary: rg
+    section: cli
+    category: cli.search
+    requirement: required
+    replaces: grep
+    platforms: [macos, linux]
+    install:
+      macos: brew:ripgrep
+      linux: brew:ripgrep
+    doc: Recursive search
+
+  - name: fd
+    binary: fd
+    section: cli
+    category: cli.search
+    requirement: required
+    replaces: find
+    platforms: [macos, linux]
+    install:
+      macos: brew:fd
+      linux: brew:fd
+    doc: File search
+
+  - name: fzf
+    binary: fzf
+    section: cli
+    category: cli.search
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:fzf
+      linux: brew:fzf
+    integrations: [shell.zsh.fzf]
+    doc: Fuzzy finder
+
+  - name: zoxide
+    binary: zoxide
+    section: cli
+    category: cli.navigation
+    requirement: required
+    replaces: cd
+    platforms: [macos, linux]
+    install:
+      macos: brew:zoxide
+      linux: brew:zoxide
+    integrations: [shell.zsh.zoxide]
+    doc: Directory jumping
+
+  - name: bat
+    binary: bat
+    section: cli
+    category: cli.files
+    requirement: required
+    replaces: cat
+    platforms: [macos, linux]
+    install:
+      macos: brew:bat
+      linux: brew:bat
+    doc: File viewer
+
+  - name: eza
+    binary: eza
+    section: cli
+    category: cli.files
+    requirement: required
+    replaces: ls
+    platforms: [macos, linux]
+    install:
+      macos: brew:eza
+      linux: brew:eza
+    version:
+      command: eza --version | sed -n '2p'
+    doc: Directory listing
+
+  - name: dust
+    binary: dust
+    section: cli
+    category: cli.filesystem
+    requirement: recommended
+    replaces: du
+    platforms: [macos, linux]
+    install:
+      macos: brew:dust
+      linux: brew:dust
+    doc: Disk usage
+
+  - name: procs
+    binary: procs
+    section: cli
+    category: cli.processes
+    requirement: recommended
+    replaces: ps
+    platforms: [macos, linux]
+    install:
+      macos: brew:procs
+      linux: brew:procs
+    doc: Process viewer
+
+  # ---------------- data ----------------
+
+  - name: jq
+    binary: jq
+    section: data
+    category: cli.json
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:jq
+      linux: brew:jq
+    doc: JSON processor
+
+  - name: yq
+    binary: yq
+    section: data
+    category: cli.yaml
+    requirement: recommended
+    platforms: [macos, linux]
+    install:
+      macos: brew:yq
+      linux: brew:yq
+    doc: YAML processor
+
+  - name: xh
+    binary: xh
+    section: data
+    category: cli.http
+    requirement: optional
+    platforms: [macos, linux]
+    install:
+      macos: brew:xh
+      linux: brew:xh
+    doc: HTTP client
+
+  - name: curl
+    binary: curl
+    section: data
+    category: cli.http
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: system
+      linux: system
+    doc: Kept native for portability
+
+  # ---------------- environment ----------------
+
+  - name: mise
+    binary: mise
+    section: environment
+    category: runtime_manager
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:mise
+      linux: brew:mise
+    integrations: [shell.zsh.mise, mise.health]
+    doc: Runtime version manager
+
+  - name: direnv
+    binary: direnv
+    section: environment
+    category: environment
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:direnv
+      linux: brew:direnv
+    integrations: [shell.zsh.direnv, direnv.mise]
+    doc: Per project environment
+
+  - name: homebrew
+    binary: brew
+    section: environment
+    category: package_manager
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: script
+      linux: script
+    integrations: [brew.bundle]
+    doc: System package manager
+
+  # ---------------- runtimes ----------------
+
+  - name: python
+    binary: python
+    section: runtimes
+    category: language
+    requirement: required
+    manager: mise
+    platforms: [macos, linux]
+    install:
+      macos: mise:python
+      linux: mise:python
+    version:
+      expected: "3.13"
+    doc: Python runtime
+
+  - name: node
+    binary: node
+    section: runtimes
+    category: language.runtime
+    requirement: required
+    manager: mise
+    platforms: [macos, linux]
+    install:
+      macos: mise:node
+      linux: mise:node
+    version:
+      expected: "22"
+    doc: Node runtime
+
+  - name: go
+    binary: go
+    section: runtimes
+    category: language
+    requirement: recommended
+    manager: mise
+    platforms: [macos, linux]
+    install:
+      macos: mise:go
+      linux: mise:go
+    version:
+      command: go version
+      expected: "1.23"
+    doc: Go toolchain
+
+  - name: rust
+    binary: rustc
+    section: runtimes
+    category: language
+    requirement: recommended
+    manager: mise
+    platforms: [macos, linux]
+    install:
+      macos: mise:rust
+      linux: mise:rust
+    doc: Rust toolchain
+
+  - name: java
+    binary: java
+    section: runtimes
+    category: language.runtime
+    requirement: recommended
+    manager: mise
+    platforms: [macos, linux]
+    install:
+      macos: mise:java
+      linux: mise:java
+    version:
+      command: java -version 2>&1
+      expected: "21"
+    doc: Java runtime, temurin
+
+  - name: ruby
+    binary: ruby
+    section: runtimes
+    category: language
+    requirement: optional
+    manager: mise
+    platforms: [macos, linux]
+    install:
+      macos: mise:ruby
+      linux: mise:ruby
+    version:
+      expected: "3.3"
+    doc: Ruby runtime
+
+  - name: php
+    binary: php
+    section: runtimes
+    category: language
+    requirement: optional
+    manager: mise
+    platforms: [macos, linux]
+    install:
+      macos: mise:php
+      linux: mise:php
+    version:
+      expected: "8.3"
+    doc: PHP runtime
+
+  - name: dotnet
+    binary: dotnet
+    section: runtimes
+    category: language.runtime
+    requirement: optional
+    manager: mise
+    platforms: [macos, linux]
+    install:
+      macos: mise:dotnet
+      linux: mise:dotnet
+    version:
+      expected: "8"
+    doc: .NET runtime
+
+  - name: kotlin
+    binary: kotlin
+    section: runtimes
+    category: language
+    requirement: optional
+    manager: mise
+    platforms: [macos, linux]
+    install:
+      macos: mise:kotlin
+      linux: mise:kotlin
+    doc: Kotlin compiler
+
+  - name: swift
+    binary: swift
+    section: runtimes
+    category: language
+    requirement: recommended
+    manager: xcode
+    platforms: [macos]
+    install:
+      macos: xcode
+    version:
+      # The first number on the line is the swift-driver version, not the
+      # language version, so the language version is selected explicitly.
+      command: swift --version 2>&1 | sed -n 's/.*Apple Swift version \([0-9.]*\).*/\1/p'
+    doc: Swift toolchain, provided by Xcode
+
+  - name: bash
+    binary: bash
+    section: runtimes
+    category: shell
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:bash
+      linux: system
+    doc: Script portability baseline
+
+  # ---------------- package managers ----------------
+
+  - name: uv
+    binary: uv
+    section: package_managers
+    category: package_manager.python
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:uv
+      linux: brew:uv
+    doc: Python dependency manager
+
+  - name: pnpm
+    binary: pnpm
+    section: package_managers
+    category: package_manager.javascript
+    requirement: recommended
+    platforms: [macos, linux]
+    install:
+      macos: brew:pnpm
+      linux: brew:pnpm
+    doc: JavaScript dependency manager
+
+  - name: cargo
+    binary: cargo
+    section: package_managers
+    category: package_manager.rust
+    requirement: recommended
+    platforms: [macos, linux]
+    install:
+      macos: mise:rust
+      linux: mise:rust
+    doc: Rust dependency manager
+
+  - name: gradle
+    binary: gradle
+    section: package_managers
+    category: package_manager.jvm
+    requirement: optional
+    platforms: [macos, linux]
+    install:
+      macos: brew:gradle
+      linux: brew:gradle
+    doc: JVM build tool
+
+  - name: maven
+    binary: mvn
+    section: package_managers
+    category: package_manager.java
+    requirement: optional
+    platforms: [macos, linux]
+    install:
+      macos: brew:maven
+      linux: brew:maven
+    version:
+      command: mvn --version 2>/dev/null | sed -n '1p'
+    doc: Java build tool
+
+  # ---------------- git ----------------
+
+  - name: git
+    binary: git
+    section: git
+    category: version_control
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:git
+      linux: brew:git
+    integrations: [git.defaults, git.signing, git.delta, git.ignore]
+    doc: Version control
+
+  - name: git-delta
+    binary: delta
+    section: git
+    category: git.diff
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:git-delta
+      linux: brew:git-delta
+    doc: Git diff pager
+
+  - name: lazygit
+    binary: lazygit
+    section: git
+    category: git.tui
+    requirement: recommended
+    platforms: [macos, linux]
+    install:
+      macos: brew:lazygit
+      linux: brew:lazygit
+    version:
+      command: lazygit --version | tr ',' '\n' | sed -n 's/.*version=//p'
+    doc: Git terminal UI
+
+  - name: gh
+    binary: gh
+    section: git
+    category: git.github
+    requirement: recommended
+    platforms: [macos, linux]
+    install:
+      macos: brew:gh
+      linux: brew:gh
+    integrations: [gh.auth]
+    doc: GitHub CLI
+
+  - name: lefthook
+    binary: lefthook
+    section: git
+    category: git.hooks
+    requirement: recommended
+    platforms: [macos, linux]
+    install:
+      macos: brew:lefthook
+      linux: brew:lefthook
+    doc: Git hook manager
+
+  # ---------------- containers ----------------
+
+  - name: orbstack
+    binary: orbctl
+    section: containers
+    category: containers
+    requirement: optional
+    platforms: [macos]
+    detect:
+      path: /Applications/OrbStack.app
+    install:
+      macos: brew-cask:orbstack
+    doc: Container runtime
+
+  - name: docker
+    binary: docker
+    section: containers
+    category: containers.cli
+    requirement: optional
+    platforms: [macos, linux]
+    install:
+      macos: brew-cask:orbstack
+      linux: manual
+    integrations: [docker.daemon]
+    doc: Container CLI
+
+  - name: lazydocker
+    binary: lazydocker
+    section: containers
+    category: containers.tui
+    requirement: optional
+    platforms: [macos, linux]
+    install:
+      macos: brew:lazydocker
+      linux: brew:lazydocker
+    version:
+      command: lazydocker --version | sed -n 's/^Version: //p'
+    doc: Container terminal UI
+
+  # ---------------- automation ----------------
+
+  - name: just
+    binary: just
+    section: automation
+    category: task_runner
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:just
+      linux: brew:just
+    doc: Task runner
+
+  # ---------------- dotfiles ----------------
+
+  - name: chezmoi
+    binary: chezmoi
+    section: dotfiles
+    category: configuration_management
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:chezmoi
+      linux: brew:chezmoi
+    integrations: [chezmoi.repository, chezmoi.clean]
+    doc: Dotfile manager
+
+  # ---------------- security ----------------
+
+  - name: 1password-cli
+    binary: op
+    section: security
+    category: secrets
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew-cask:1password-cli
+      linux: brew:1password-cli
+    doc: Secret injection
+
+  - name: gitleaks
+    binary: gitleaks
+    section: security
+    category: secret_scanning
+    requirement: required
+    platforms: [macos, linux]
+    install:
+      macos: brew:gitleaks
+      linux: brew:gitleaks
+    doc: Secret scanning
+
+  - name: shellcheck
+    binary: shellcheck
+    section: security
+    category: security.lint
+    requirement: recommended
+    platforms: [macos, linux]
+    install:
+      macos: brew:shellcheck
+      linux: brew:shellcheck
+    doc: Shell static analysis
+
+  - name: secretive
+    section: security
+    category: ssh_agent
+    requirement: optional
+    platforms: [macos]
+    detect:
+      path: /Applications/Secretive.app
+    install:
+      macos: brew-cask:secretive
+    integrations: [ssh.keys, ssh.agent]
+    doc: Secure enclave SSH keys
+
+  # ---------------- observability ----------------
+
+  - name: btop
+    binary: btop
+    section: observability
+    category: system_monitor
+    requirement: recommended
+    replaces: top
+    platforms: [macos, linux]
+    install:
+      macos: brew:btop
+      linux: brew:btop
+    doc: System monitor
+
+  - name: hyperfine
+    binary: hyperfine
+    section: observability
+    category: benchmarking
+    requirement: recommended
+    platforms: [macos, linux]
+    install:
+      macos: brew:hyperfine
+      linux: brew:hyperfine
+    doc: Command benchmarking
+
+  - name: bandwhich
+    binary: bandwhich
+    section: observability
+    category: network_monitor
+    requirement: optional
+    platforms: [macos, linux]
+    install:
+      macos: brew:bandwhich
+      linux: brew:bandwhich
+    doc: Network monitor
+
+  - name: lnav
+    binary: lnav
+    section: observability
+    category: log_viewer
+    requirement: optional
+    platforms: [macos, linux]
+    install:
+      macos: brew:lnav
+      linux: brew:lnav
+    doc: Log viewer
+
+  # ---------------- mobile ----------------
+
+  - name: xcode
+    binary: xcodebuild
+    section: mobile
+    category: mobile.ios
+    requirement: optional
+    platforms: [macos]
+    detect:
+      path: /Applications/Xcode.app
+    install:
+      macos: manual
+    version:
+      command: xcodebuild -version 2>/dev/null | sed -n '1p'
+    integrations: [ios.command_line_tools, ios.simulators, ios.license]
+    doc: iOS toolchain
+
+  - name: fastlane
+    binary: fastlane
+    section: mobile
+    category: mobile.ios.automation
+    requirement: optional
+    platforms: [macos]
+    install:
+      macos: brew:fastlane
+    doc: iOS release automation
+
+  - name: android-sdk
+    binary: sdkmanager
+    section: mobile
+    category: mobile.android
+    requirement: optional
+    platforms: [macos, linux]
+    detect:
+      path: ~/Library/Android/sdk
+    install:
+      macos: brew-cask:android-commandlinetools
+      linux: manual
+    integrations: [android.home, android.platform_tools]
+    doc: Android SDK
+
+  - name: adb
+    binary: adb
+    section: mobile
+    category: mobile.android
+    requirement: optional
+    platforms: [macos, linux]
+    install:
+      macos: brew-cask:android-platform-tools
+      linux: manual
+    version:
+      command: adb --version 2>/dev/null | sed -n '1p'
+    doc: Android debug bridge
+
+  - name: flutter
+    binary: flutter
+    section: mobile
+    category: mobile.flutter
+    requirement: optional
+    platforms: [macos, linux]
+    install:
+      macos: mise:flutter
+      linux: mise:flutter
+    version:
+      command: flutter --version 2>/dev/null | sed -n '1p'
+    integrations: [flutter.doctor]
+    doc: Flutter SDK
+
+  - name: dart
+    binary: dart
+    section: mobile
+    category: mobile.flutter
+    requirement: optional
+    platforms: [macos, linux]
+    install:
+      macos: mise:dart
+      linux: mise:dart
+    version:
+      command: dart --version 2>&1
+    doc: Dart SDK

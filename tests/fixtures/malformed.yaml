@@ -1,0 +1,10 @@
+version: 1
+
+sections:
+  - id: shell
+    title: Shell
+
+tools:
+  - name: indented-wrong
+     binary: three-spaces
+    section: shell
