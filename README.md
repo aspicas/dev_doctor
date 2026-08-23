@@ -151,6 +151,7 @@ dev doctor                    # full report
 dev doctor --section git      # one section
 dev doctor --deep             # include the slow checks
 dev doctor --fix              # apply the fixes that are safe to automate
+dev doctor --manual           # only the fixes that need a human
 dev doctor --json             # machine readable, for CI
 
 dev tools                     # what the manifest declares
@@ -224,6 +225,13 @@ Never automated, only printed:
 - secrets and credentials
 - anything that removes a tool
 - **any file that chezmoi owns**
+
+`dev doctor --manual` prints that second list on its own, without the
+report and without the automated fixes, which is useful once `--fix` has
+done its part and only the human work is left. It runs the same checks, so
+the exit status still reflects the state of the machine; only the output is
+narrowed. It cannot be combined with `--fix`, since the two describe
+opposite halves of the same list.
 
 That last one is a design decision, not caution for its own sake. The
 manifest names chezmoi as the source of truth for dotfiles. If `--fix`

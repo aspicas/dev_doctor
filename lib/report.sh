@@ -18,12 +18,21 @@ REPORT_FORMAT="human"
 REPORT_SECTION=""
 REPORT_SECTION_PENDING=""
 REPORT_NAME_WIDTH=28
+REPORT_QUIET=""
 
 report::init() {
     REPORT_RESULTS="$DEV_RUN_DIR/results.tsv"
     REPORT_FIXES="$DEV_RUN_DIR/fixes.tsv"
     : > "$REPORT_RESULTS"
     : > "$REPORT_FIXES"
+}
+
+# Whether the per-check lines are printed as they happen. Views that only
+# render a digest at the end, such as `dev doctor --manual`, run every check
+# but suppress the running commentary. The results file is written either
+# way, so counters and exit status are unaffected.
+report::streaming() {
+    [ "$REPORT_FORMAT" = "human" ] && [ -z "$REPORT_QUIET" ]
 }
 
 # Pad to a column width measured in characters. printf field widths
@@ -39,7 +48,7 @@ report::pad() {
 }
 
 report::header() {
-    [ "$REPORT_FORMAT" != "human" ] && return 0
+    report::streaming || return 0
     printf '\n%s%s%s\n' "$C_BOLD" "$1" "$C_RESET"
     printf '%s%s%s\n' "$C_DIM" "$(report::_rule "$1")" "$C_RESET"
 }
@@ -89,7 +98,7 @@ report::emit() {
         "$status" "$REPORT_SECTION" "$name" "$value" "$expected" \
         >> "$REPORT_RESULTS"
 
-    [ "$REPORT_FORMAT" != "human" ] && return 0
+    report::streaming || return 0
 
     report::_flush_section
 
@@ -147,7 +156,7 @@ report::count() {
 # ------------------------------------------------------------
 
 report::summary() {
-    [ "$REPORT_FORMAT" != "human" ] && return 0
+    report::streaming || return 0
 
     local passed warnings failures skipped
     passed="$(report::count ok)"

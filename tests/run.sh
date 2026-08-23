@@ -181,6 +181,24 @@ fi
 "$DEV_ROOT/bin/dev" manifest lint >/dev/null 2>&1
 assert_status "0" "$?" "dev manifest lint succeeds"
 
+group "doctor: --manual narrows the report"
+
+# Asserted on structure rather than content, so the result does not depend
+# on how much of the manifest this particular machine happens to satisfy.
+manual_out="$("$DEV_ROOT/bin/dev" doctor --manual --section git 2>&1)"
+
+printf '%s' "$manual_out" | grep -qF 'Suggested fixes'
+assert_status "1" "$?" "--manual omits the automated fixes"
+
+printf '%s' "$manual_out" | grep -qF 'passed'
+assert_status "1" "$?" "--manual omits the summary counters"
+
+"$DEV_ROOT/bin/dev" doctor --manual --fix >/dev/null 2>&1
+assert_status "1" "$?" "--manual and --fix cannot be combined"
+
+"$DEV_ROOT/bin/dev" doctor --manual --format json >/dev/null 2>&1
+assert_status "1" "$?" "--manual is rejected in the json format"
+
 group "bootstrap: remote installer"
 
 chmod +x "$DEV_ROOT/scripts/bootstrap.sh" 2>/dev/null

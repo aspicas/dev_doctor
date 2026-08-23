@@ -7,6 +7,7 @@ DOCTOR_DEEP=""
 DOCTOR_APPLY=""
 DOCTOR_ASSUME_YES=""
 DOCTOR_ONLY_SECTION=""
+DOCTOR_MANUAL_ONLY=""
 
 doctor::usage() {
     cat <<'USAGE'
@@ -16,6 +17,7 @@ Compare toolchain.yaml against what is actually installed and configured.
 
 Options:
   --fix              apply the fixes classified as safe, after confirmation
+  --manual           print only the fixes that cannot be automated
   --yes              do not prompt when applying fixes
   --deep             include slow checks such as flutter doctor and brew bundle
   --section <id>     restrict the report to a single section
@@ -36,6 +38,7 @@ doctor::main() {
     while [ $# -gt 0 ]; do
         case "$1" in
             --fix) DOCTOR_APPLY=1 ;;
+            --manual) DOCTOR_MANUAL_ONLY=1 ;;
             --yes|-y) DOCTOR_ASSUME_YES=1 ;;
             --deep) DOCTOR_DEEP=1 ;;
             --section) shift; DOCTOR_ONLY_SECTION="${1:-}" ;;
@@ -53,6 +56,18 @@ doctor::main() {
         *) dev::die "unsupported format: $REPORT_FORMAT" ;;
     esac
 
+    if [ -n "$DOCTOR_MANUAL_ONLY" ]; then
+        # The manual list is by definition what --fix cannot do, so asking
+        # for both is a contradiction rather than a narrowing.
+        if [ -n "$DOCTOR_APPLY" ]; then
+            dev::die "--manual and --fix are mutually exclusive"
+        fi
+        if [ "$REPORT_FORMAT" != "human" ]; then
+            dev::die "--manual is only available in the human format"
+        fi
+        REPORT_QUIET=1
+    fi
+
     [ "$REPORT_FORMAT" = "json" ] && color="never"
     style::init "$color"
 
@@ -62,8 +77,13 @@ doctor::main() {
 
     doctor::intro
     doctor::run_sections
-    report::summary
-    doctor::report_fixes
+
+    if [ -n "$DOCTOR_MANUAL_ONLY" ]; then
+        doctor::report_manual
+    else
+        report::summary
+        doctor::report_fixes
+    fi
 
     if [ "$REPORT_FORMAT" = "json" ]; then
         report::render_json
@@ -73,7 +93,7 @@ doctor::main() {
 }
 
 doctor::intro() {
-    [ "$REPORT_FORMAT" != "human" ] && return 0
+    report::streaming || return 0
 
     printf '\n%sDeveloper Environment Doctor%s\n' "$C_BOLD" "$C_RESET"
     printf '%s%s · %s%s\n' \
@@ -134,21 +154,7 @@ doctor::report_fixes() {
         fi
     done < "$REPORT_FIXES"
 
-    seen=""
-    local manual_printed=0
-    while IFS=$'\t' read -r risk label command; do
-        [ -z "$risk" ] && continue
-        [ "$risk" = "safe" ] && continue
-        case "$seen" in *"|$command|"*) continue ;; esac
-        seen="$seen|$command|"
-
-        if [ "$manual_printed" -eq 0 ]; then
-            printf '\n%sNeeds a human%s\n' "$C_BOLD" "$C_RESET"
-            printf '%s────────────%s\n' "$C_DIM" "$C_RESET"
-            manual_printed=1
-        fi
-        printf '  %s%s%s%s\n' "$C_DIM" "$(report::pad "$label" 26)" "$C_RESET" "$command"
-    done < "$REPORT_FIXES"
+    doctor::print_manual_fixes
 
     printf '\n'
 
@@ -163,6 +169,37 @@ doctor::report_fixes() {
     fi
 
     doctor::apply_fixes "$safe_count"
+}
+
+# Printed both on its own by `--manual` and as the tail of the full report.
+# Returns non-zero when there was nothing to print, so that callers can say
+# so instead of emitting a bare heading.
+doctor::print_manual_fixes() {
+    local risk label command seen="" printed=0
+
+    while IFS=$'\t' read -r risk label command; do
+        [ -z "$risk" ] && continue
+        [ "$risk" = "safe" ] && continue
+        case "$seen" in *"|$command|"*) continue ;; esac
+        seen="$seen|$command|"
+
+        if [ "$printed" -eq 0 ]; then
+            printf '\n%sNeeds a human%s\n' "$C_BOLD" "$C_RESET"
+            printf '%s────────────%s\n' "$C_DIM" "$C_RESET"
+            printed=1
+        fi
+        printf '  %s%s%s%s\n' "$C_DIM" "$(report::pad "$label" 26)" "$C_RESET" "$command"
+    done < "$REPORT_FIXES"
+
+    [ "$printed" -eq 1 ]
+}
+
+doctor::report_manual() {
+    if doctor::print_manual_fixes; then
+        printf '\n'
+    else
+        printf '\n%sNothing needs a human.%s\n\n' "$C_GREEN" "$C_RESET"
+    fi
 }
 
 doctor::apply_fixes() {
