@@ -22,7 +22,8 @@ lint-shell:
         exit 1
     fi
     shellcheck --severity=warning --shell=bash --external-sources \
-        bin/dev install.sh tests/run.sh lib/*.sh doctor/*.sh commands/*.sh
+        bin/dev install.sh scripts/bootstrap.sh tests/run.sh \
+        lib/*.sh doctor/*.sh commands/*.sh
 
 # Everything a change should pass before it lands.
 check: lint-manifest lint-shell test
@@ -34,3 +35,7 @@ doctor:
 # Regenerate the Brewfile from the manifest.
 brewfile:
     ./bin/dev install --write-brewfile
+
+# Exercise the remote bootstrap without cloning.
+bootstrap-dry-run:
+    ./scripts/bootstrap.sh --local --dry-run

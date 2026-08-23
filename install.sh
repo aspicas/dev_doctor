@@ -7,13 +7,12 @@
 #
 #   ./install.sh
 #
-# It deliberately does NOT support `curl ... | bash`. The environment
-# this tool describes forbids piping remote scripts into a shell, and an
-# installer that broke that rule on its way in would be a poor start.
+# For a one-line remote install, use scripts/bootstrap.sh instead:
+#
+#   curl -fsSL <bootstrap-url> | bash
 #
 # All it does is verify the prerequisites, validate the manifest and
-# link `bin/dev` onto your PATH. Nothing is downloaded and nothing
-# outside the prefix is modified.
+# link `bin/dev` onto your PATH. Nothing is downloaded from this script.
 # ============================================================
 
 set -uo pipefail
@@ -23,6 +22,8 @@ FORCE=""
 VERIFY=1
 UNINSTALL=""
 CONFIGURE_PATH=1
+ASSUME_YES=""
+REMOVE_DATA=""
 
 SOURCE_ROOT="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET=""
@@ -55,13 +56,52 @@ usage() {
 Usage: ./install.sh [options]
 
 Options:
-  --prefix <dir>   where to link the `dev` command, default ~/.local/bin
-  --force          replace an existing `dev` at the target
-  --no-path        do not touch the zsh configuration
-  --no-verify      skip the manifest validation step
-  --uninstall      remove a previously linked `dev` and its PATH entry
-  -h, --help       show this help
+  --prefix <dir>     where to link the `dev` command, default ~/.local/bin
+  --force            replace an existing `dev` at the target
+  --yes, -y          do not prompt when removing data
+  --no-path          do not touch the zsh configuration
+  --no-verify        skip the manifest validation step
+  --uninstall        remove the symlink and the PATH entry
+  --remove-data      with --uninstall, also delete this checkout
+  -h, --help         show this help
 USAGE
+}
+
+confirm() {
+    local prompt="$1"
+    local reply
+
+    [ -n "$ASSUME_YES" ] && return 0
+
+    if [ ! -t 0 ]; then
+        die "$prompt (re-run with --yes in a non-interactive shell)"
+    fi
+
+    printf '%s [y/N] ' "$prompt"
+    read -r reply
+    case "$reply" in
+        y|Y|yes|YES) return 0 ;;
+        *) printf 'Nothing was changed.\n'; exit 0 ;;
+    esac
+}
+
+# Only remove a checkout that looks like dev doctor, never an arbitrary path.
+install::safe_to_remove_data() {
+    [ -f "$SOURCE_ROOT/toolchain.yaml" ] || return 1
+    [ -x "$SOURCE_ROOT/bin/dev" ] || return 1
+    return 0
+}
+
+install::remove_data() {
+    if ! install::safe_to_remove_data; then
+        bad "refusing to delete $SOURCE_ROOT, it does not look like a dev doctor checkout"
+        return 1
+    fi
+
+    confirm "Delete the checkout at $SOURCE_ROOT?"
+    rm -rf "$SOURCE_ROOT" || return 1
+    ok "removed $SOURCE_ROOT"
+    return 0
 }
 
 # ------------------------------------------------------------
@@ -158,9 +198,11 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --prefix) shift; PREFIX="${1:-}" ;;
         --force) FORCE=1 ;;
+        --yes|-y) ASSUME_YES=1 ;;
         --no-path) CONFIGURE_PATH="" ;;
         --no-verify) VERIFY="" ;;
         --uninstall) UNINSTALL=1 ;;
+        --remove-data) REMOVE_DATA=1 ;;
         -h|--help) usage; exit 0 ;;
         *) printf 'unknown option: %s\n\n' "$1" >&2; usage >&2; exit 64 ;;
     esac
@@ -200,8 +242,14 @@ if [ -n "$UNINSTALL" ]; then
         ok "no PATH entry to remove"
     fi
 
-    printf '\n%sThe checkout itself was not touched.%s\n' "$C_DIM" "$C_RESET"
-    printf '%sOpen a new shell for the PATH change to take effect.%s\n\n' "$C_DIM" "$C_RESET"
+    if [ -n "$REMOVE_DATA" ]; then
+        install::remove_data || exit 1
+    else
+        printf '\n%sThe checkout at %s was kept.%s\n' "$C_DIM" "$SOURCE_ROOT" "$C_RESET"
+        printf '%sRemove it with: ./install.sh --uninstall --remove-data%s\n' "$C_DIM" "$C_RESET"
+    fi
+
+    printf '\n%sOpen a new shell for the PATH change to take effect.%s\n\n' "$C_DIM" "$C_RESET"
     exit 0
 fi
 

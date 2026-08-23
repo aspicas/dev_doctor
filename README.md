@@ -23,26 +23,70 @@ disagree.
 
 ## Install
 
+### One line (remote bootstrap)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/davidgarcia/dev_doctor/main/scripts/bootstrap.sh | bash
+```
+
+The bootstrap script clones the repository to `~/.local/share/dev-doctor`, then
+runs the local installer inside that checkout. It only fetches the project and
+delegates to `./install.sh`; it does not duplicate install logic.
+
+Useful variants:
+
+```bash
+# Non-interactive
+curl -fsSL .../scripts/bootstrap.sh | bash -s -- --yes
+
+# Preview only
+curl -fsSL .../scripts/bootstrap.sh | bash -s -- --dry-run
+
+# Pin a version
+DEV_DOCTOR_REF=v1.0.0 curl -fsSL .../scripts/bootstrap.sh | bash
+
+# Uninstall everything
+curl -fsSL .../scripts/bootstrap.sh | bash -s -- --uninstall --yes
+```
+
+Before publishing, set `DEV_DOCTOR_REPO` in `scripts/bootstrap.sh` to your
+real GitHub URL, or override it at install time:
+
+```bash
+DEV_DOCTOR_REPO=https://github.com/you/dev_doctor.git curl -fsSL ... | bash
+```
+
+For a custom domain such as `https://dev-doctor.example.com/install.sh`,
+host `scripts/bootstrap.sh` at that path or redirect to the raw GitHub URL.
+
+### From a checkout
+
 ```bash
 git clone <this-repo> ~/Projects/dev_doctor
 cd ~/Projects/dev_doctor
 ./install.sh
 ```
 
+Or use the bootstrap in local mode, which skips cloning:
+
+```bash
+./scripts/bootstrap.sh --local --yes
+```
+
 This validates the manifest, links `bin/dev` into `~/.local/bin`, and adds
-that directory to your `PATH` in `.zshrc`. It downloads nothing, and it is
-not designed to be piped from `curl` into a shell — the environment
-described here forbids that, and an installer that broke the rule on its
-way in would be a poor start.
+that directory to your `PATH` in `.zshrc`.
 
 ```bash
 ./install.sh --prefix /usr/local/bin   # link somewhere else
 ./install.sh --force                   # replace an existing dev
+./install.sh --yes                     # non-interactive uninstall/remove-data
 ./install.sh --no-path                 # do not touch the shell config
 ./install.sh --uninstall               # remove the link and the PATH entry
+./install.sh --uninstall --remove-data # also delete this checkout
 ```
 
-Requires `bash` 3.2 and POSIX `awk`. Both already exist on macOS and Linux.
+Requires `bash` 3.2, POSIX `awk`, and `git` for the remote bootstrap.
+Both `bash` and `awk` already exist on macOS and Linux.
 
 ### What it writes to your shell config
 
@@ -178,7 +222,9 @@ dev setup git-signing
 dev_doctor/
 ├── toolchain.yaml          the manifest, single source of truth
 ├── Brewfile                generated from the manifest, never hand written
-├── install.sh
+├── install.sh              local installer, run from a checkout
+├── scripts/
+│   └── bootstrap.sh        remote one-line installer (curl | bash)
 ├── justfile
 │
 ├── bin/

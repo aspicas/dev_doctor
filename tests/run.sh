@@ -181,6 +181,12 @@ fi
 "$DEV_ROOT/bin/dev" manifest lint >/dev/null 2>&1
 assert_status "0" "$?" "dev manifest lint succeeds"
 
+group "bootstrap: remote installer"
+
+chmod +x "$DEV_ROOT/scripts/bootstrap.sh" 2>/dev/null
+"$DEV_ROOT/scripts/bootstrap.sh" --local --dry-run >/dev/null 2>&1
+assert_status "0" "$?" "bootstrap --local --dry-run succeeds"
+
 # ------------------------------------------------------------
 
 printf '\n──────────────────────────────\n'
