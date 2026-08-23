@@ -5,7 +5,7 @@
 #
 # Intended entry point for one-line installs:
 #
-#   curl -fsSL https://raw.githubusercontent.com/OWNER/dev_doctor/main/scripts/bootstrap.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/aspicas/dev_doctor/main/scripts/bootstrap.sh | bash
 #
 # This script is separate from ./install.sh on purpose. It only downloads
 # or updates the checkout, then delegates to the local installer inside
@@ -26,8 +26,7 @@
 
 set -uo pipefail
 
-# Set this when you publish the repository.
-DEV_DOCTOR_REPO="${DEV_DOCTOR_REPO:-https://github.com/davidgarcia/dev_doctor.git}"
+DEV_DOCTOR_REPO="${DEV_DOCTOR_REPO:-https://github.com/aspicas/dev_doctor.git}"
 DEV_DOCTOR_DIR="${DEV_DOCTOR_DIR:-$HOME/.local/share/dev-doctor}"
 DEV_DOCTOR_REF="${DEV_DOCTOR_REF:-main}"
 PREFIX="${PREFIX:-$HOME/.local/bin}"
@@ -92,17 +91,25 @@ run() {
 
 confirm() {
     local prompt="$1"
-    local reply
+    local reply=""
 
     [ -n "$ASSUME_YES" ] && return 0
     [ -n "$DRY_RUN" ] && return 0
 
-    if [ ! -t 0 ]; then
+    # Under `curl | bash` stdin is the script itself, so the prompt has to go
+    # to the controlling terminal instead. /dev/tty exists as a device node
+    # even when no terminal is attached, so the only reliable probe is to
+    # open it. With no terminal at all, refuse rather than assume consent.
+    if { : >/dev/tty && : </dev/tty; } 2>/dev/null; then
+        printf '%s [y/N] ' "$prompt" >/dev/tty
+        read -r reply </dev/tty || reply=""
+    elif [ -t 0 ]; then
+        printf '%s [y/N] ' "$prompt"
+        read -r reply || reply=""
+    else
         die "$prompt (re-run with --yes in a non-interactive shell)"
     fi
 
-    printf '%s [y/N] ' "$prompt"
-    read -r reply
     case "$reply" in
         y|Y|yes|YES) return 0 ;;
         *) printf 'Nothing was changed.\n'; exit 0 ;;
@@ -167,6 +174,9 @@ done
 [ -n "$DEV_DOCTOR_DIR" ] || die "--dir needs a directory"
 
 if [ -n "$LOCAL" ]; then
+    # Piped into bash there is no script on disk to resolve against.
+    [ -n "${BASH_SOURCE[0]:-}" ] \
+        || die "--local needs the script on disk, it cannot be piped from curl"
     DEV_DOCTOR_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 else
     [ -n "$DEV_DOCTOR_REPO" ] || die "DEV_DOCTOR_REPO is not set"
@@ -193,7 +203,11 @@ if [ -n "$UNINSTALL" ]; then
         bootstrap::uninstall_fallback
     fi
 
-    printf '\n%sDone.%s\n\n' "$C_DIM" "$C_RESET"
+    if [ -n "$DRY_RUN" ]; then
+        printf '\n%sDry run complete. Nothing was changed.%s\n\n' "$C_DIM" "$C_RESET"
+    else
+        printf '\n%sDone.%s\n\n' "$C_DIM" "$C_RESET"
+    fi
     exit 0
 fi
 
@@ -223,13 +237,17 @@ else
 
     if [ -d "$DEV_DOCTOR_DIR/.git" ]; then
         ok "existing checkout at $DEV_DOCTOR_DIR"
+        # The fetched commit only lands in FETCH_HEAD. Checking out the ref by
+        # name would move to the local branch, which is still at the previous
+        # commit, so the update would silently do nothing. Detaching also
+        # keeps branches and tags on the same code path.
         if [ -n "$DRY_RUN" ]; then
             run git -C "$DEV_DOCTOR_DIR" fetch --depth 1 origin "$DEV_DOCTOR_REF"
-            run git -C "$DEV_DOCTOR_DIR" checkout "$DEV_DOCTOR_REF"
+            run git -C "$DEV_DOCTOR_DIR" checkout --detach FETCH_HEAD
         else
             git -C "$DEV_DOCTOR_DIR" fetch --depth 1 origin "$DEV_DOCTOR_REF" \
                 || die "could not fetch $DEV_DOCTOR_REF from $DEV_DOCTOR_REPO"
-            git -C "$DEV_DOCTOR_DIR" checkout "$DEV_DOCTOR_REF" \
+            git -C "$DEV_DOCTOR_DIR" checkout --detach FETCH_HEAD \
                 || die "could not checkout $DEV_DOCTOR_REF"
         fi
         ok "updated to $DEV_DOCTOR_REF"

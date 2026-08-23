@@ -26,43 +26,67 @@ disagree.
 ### One line (remote bootstrap)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/davidgarcia/dev_doctor/main/scripts/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/aspicas/dev_doctor/main/scripts/bootstrap.sh | bash
 ```
 
 The bootstrap script clones the repository to `~/.local/share/dev-doctor`, then
 runs the local installer inside that checkout. It only fetches the project and
-delegates to `./install.sh`; it does not duplicate install logic.
+delegates to `./install.sh`; it does not duplicate install logic. The
+confirmation prompt is read from `/dev/tty` rather than stdin, so it still
+works when the script arrives through a pipe.
 
-Useful variants:
+Running it again fetches the pinned ref and moves the checkout onto it, so the
+same command both installs and updates. If `dev` is already linked from a
+different checkout the install stops and asks for `--force`, rather than
+quietly repointing a command you installed by hand.
 
-```bash
-# Non-interactive
-curl -fsSL .../scripts/bootstrap.sh | bash -s -- --yes
-
-# Preview only
-curl -fsSL .../scripts/bootstrap.sh | bash -s -- --dry-run
-
-# Pin a version
-DEV_DOCTOR_REF=v1.0.0 curl -fsSL .../scripts/bootstrap.sh | bash
-
-# Uninstall everything
-curl -fsSL .../scripts/bootstrap.sh | bash -s -- --uninstall --yes
-```
-
-Before publishing, set `DEV_DOCTOR_REPO` in `scripts/bootstrap.sh` to your
-real GitHub URL, or override it at install time:
+Options go after `bash -s --`:
 
 ```bash
-DEV_DOCTOR_REPO=https://github.com/you/dev_doctor.git curl -fsSL ... | bash
+# Non-interactive, no prompt
+curl -fsSL https://raw.githubusercontent.com/aspicas/dev_doctor/main/scripts/bootstrap.sh | bash -s -- --yes
+
+# Preview the plan, change nothing
+curl -fsSL https://raw.githubusercontent.com/aspicas/dev_doctor/main/scripts/bootstrap.sh | bash -s -- --dry-run
+
+# Replace a `dev` already linked from another checkout
+curl -fsSL https://raw.githubusercontent.com/aspicas/dev_doctor/main/scripts/bootstrap.sh | bash -s -- --force
+
+# Remove the symlink, the PATH entry and the checkout
+curl -fsSL https://raw.githubusercontent.com/aspicas/dev_doctor/main/scripts/bootstrap.sh | bash -s -- --uninstall --yes
 ```
 
-For a custom domain such as `https://dev-doctor.example.com/install.sh`,
-host `scripts/bootstrap.sh` at that path or redirect to the raw GitHub URL.
+The repository, the ref and the install locations also read environment
+variables, which are easier to spot at the front of a one-liner than a flag
+buried after `bash -s --`:
+
+```bash
+# Pin a tag or branch instead of main
+DEV_DOCTOR_REF=v1.0.0 \
+  curl -fsSL https://raw.githubusercontent.com/aspicas/dev_doctor/main/scripts/bootstrap.sh | bash
+
+# Install a fork or a private mirror
+DEV_DOCTOR_REPO=https://github.com/you/dev_doctor.git \
+  curl -fsSL https://raw.githubusercontent.com/you/dev_doctor/main/scripts/bootstrap.sh | bash
+```
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `DEV_DOCTOR_REPO` | `https://github.com/aspicas/dev_doctor.git` | repository to clone |
+| `DEV_DOCTOR_DIR` | `~/.local/share/dev-doctor` | where the checkout lives |
+| `DEV_DOCTOR_REF` | `main` | branch or tag to install |
+| `PREFIX` | `~/.local/bin` | where `dev` is linked |
+
+Run `--help` to see the full option list:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aspicas/dev_doctor/main/scripts/bootstrap.sh | bash -s -- --help
+```
 
 ### From a checkout
 
 ```bash
-git clone <this-repo> ~/Projects/dev_doctor
+git clone https://github.com/aspicas/dev_doctor.git ~/Projects/dev_doctor
 cd ~/Projects/dev_doctor
 ./install.sh
 ```

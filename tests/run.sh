@@ -187,6 +187,11 @@ chmod +x "$DEV_ROOT/scripts/bootstrap.sh" 2>/dev/null
 "$DEV_ROOT/scripts/bootstrap.sh" --local --dry-run >/dev/null 2>&1
 assert_status "0" "$?" "bootstrap --local --dry-run succeeds"
 
+# Piped from curl there is no script on disk for --local to resolve against,
+# so it must refuse rather than expand to an unrelated directory.
+bash -s -- --local < "$DEV_ROOT/scripts/bootstrap.sh" >/dev/null 2>&1
+assert_status "1" "$?" "bootstrap --local refuses to run from a pipe"
+
 # ------------------------------------------------------------
 
 printf '\n──────────────────────────────\n'

@@ -69,16 +69,25 @@ USAGE
 
 confirm() {
     local prompt="$1"
-    local reply
+    local reply=""
 
     [ -n "$ASSUME_YES" ] && return 0
 
-    if [ ! -t 0 ]; then
+    # When the remote bootstrap invokes this script, stdin is still the pipe
+    # curl is writing into, so the prompt has to go to the controlling
+    # terminal instead. /dev/tty exists as a device node even when no terminal
+    # is attached, so the only reliable probe is to open it. With no terminal
+    # at all, refuse rather than assume consent.
+    if { : >/dev/tty && : </dev/tty; } 2>/dev/null; then
+        printf '%s [y/N] ' "$prompt" >/dev/tty
+        read -r reply </dev/tty || reply=""
+    elif [ -t 0 ]; then
+        printf '%s [y/N] ' "$prompt"
+        read -r reply || reply=""
+    else
         die "$prompt (re-run with --yes in a non-interactive shell)"
     fi
 
-    printf '%s [y/N] ' "$prompt"
-    read -r reply
     case "$reply" in
         y|Y|yes|YES) return 0 ;;
         *) printf 'Nothing was changed.\n'; exit 0 ;;
