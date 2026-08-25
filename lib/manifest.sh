@@ -53,6 +53,26 @@ manifest::section_title() {
     ' "$MANIFEST_CACHE"
 }
 
+# True when `$1` is a declared section id. On failure the error already
+# names `dev sections`, so callers only have to decide the exit status.
+manifest::require_section() {
+    local want="$1"
+
+    if [ -z "$want" ]; then
+        dev::error "section id is required"
+        dev::log "run \`dev sections\` to see the declared ids"
+        return 1
+    fi
+
+    if manifest::section_ids | grep -qx "$want"; then
+        return 0
+    fi
+
+    dev::error "unknown section: $want"
+    dev::log "run \`dev sections\` to see the declared ids"
+    return 1
+}
+
 manifest::tool_indices() {
     awk -F'\t' '$1 == "TOOL" && $3 == "name" { print $2 }' "$MANIFEST_CACHE"
 }

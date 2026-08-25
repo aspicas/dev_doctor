@@ -18,7 +18,7 @@ Install everything declared in toolchain.yaml that is missing here.
 Options:
   --dry-run           print what would happen and change nothing
   --yes               do not prompt
-  --section <id>      restrict to a single section
+  --section <id>      restrict to a single section (`dev sections` lists them)
   --requirement <l>   only required, recommended or optional entries
   --write-brewfile    regenerate the Brewfile from the manifest
   -h, --help          show this help
@@ -44,6 +44,10 @@ install::main() {
     style::init auto
     manifest::load
     manifest::lint || dev::die "refusing to install from an invalid manifest"
+
+    if [ -n "$only_section" ]; then
+        manifest::require_section "$only_section" || return 64
+    fi
 
     local index directive command reply
     local names=() commands=() manual=()
@@ -163,18 +167,26 @@ install::write_brewfile() {
 
 update::usage() {
     cat <<'USAGE'
-Usage: dev update [--yes]
+Usage: dev update [options]
 
-Update the package manager, the runtimes and the dotfiles.
+Update what is already installed: Homebrew packages, mise runtimes,
+the Flutter SDK via fvm, and chezmoi-managed dotfiles. `dev doctor`
+reports drift; this command is what actually refreshes the machine.
+
+Options:
+  --yes        do not prompt
+  --dry-run    print the plan and change nothing
+  -h, --help   show this help
 USAGE
 }
 
 update::main() {
-    local assume_yes="" reply
+    local assume_yes="" dry_run="" reply
 
     while [ $# -gt 0 ]; do
         case "$1" in
             --yes|-y) assume_yes=1 ;;
+            --dry-run|-n) dry_run=1 ;;
             -h|--help) update::usage; return 0 ;;
             *) dev::error "unknown option: $1"; return 64 ;;
         esac
@@ -186,10 +198,13 @@ update::main() {
     local steps=()
     have brew && steps+=("brew update && brew upgrade")
     have mise && steps+=("mise upgrade")
+    # fvm keeps the SDK off PATH, so brew/mise will not touch it. Installing
+    # the current global channel again is how fvm picks up a newer stable.
+    have fvm && steps+=("fvm install stable && fvm global stable")
     have chezmoi && steps+=("chezmoi update --apply")
 
     if [ "${#steps[@]}" -eq 0 ]; then
-        dev::die "none of brew, mise or chezmoi are installed"
+        dev::die "none of brew, mise, fvm or chezmoi are installed"
     fi
 
     printf '\n%sUpdate plan%s\n' "$C_BOLD" "$C_RESET"
@@ -198,6 +213,11 @@ update::main() {
         printf '  %s\n' "$step"
     done
     printf '\n'
+
+    if [ -n "$dry_run" ]; then
+        printf 'Dry run complete. Nothing was changed.\n'
+        return 0
+    fi
 
     if [ -z "$assume_yes" ]; then
         if [ ! -t 0 ]; then

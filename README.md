@@ -154,16 +154,21 @@ dev doctor --fix              # apply the fixes that are safe to automate
 dev doctor --manual           # only the fixes that need a human
 dev doctor --json             # machine readable, for CI
 
+dev sections                  # the ids `--section` accepts
 dev tools                     # what the manifest declares
 dev versions                  # declared versions against installed ones
 dev install                   # install what is declared and missing
-dev update                    # update brew, mise and chezmoi
+dev update                    # update brew, mise, fvm and chezmoi
 dev setup git-signing         # guided config for what doctor will not automate
 dev manifest lint             # validate toolchain.yaml
 ```
 
 Exit status is `0` when clean, `1` with warnings, `2` with failures, so it
 drops straight into CI.
+
+`dev doctor` never mutates the machine. `--fix` applies the remediations
+it found; `dev update` refreshes what is already installed. `dev sections`
+prints the ids that `--section` accepts.
 
 ## What it checks
 

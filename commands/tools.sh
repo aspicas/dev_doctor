@@ -2,6 +2,7 @@
 # ============================================================
 # `dev tools`     — what the manifest declares.
 # `dev versions`  — declared versions against installed versions.
+# `dev sections`  — the section ids `--section` accepts.
 # ============================================================
 
 tools::usage() {
@@ -9,6 +10,8 @@ tools::usage() {
 Usage: dev tools [--section <id>] [--requirement <level>]
 
 List everything declared in toolchain.yaml for this platform.
+
+The values accepted by --section are the ids printed by `dev sections`.
 USAGE
 }
 
@@ -27,6 +30,10 @@ tools::main() {
 
     style::init auto
     manifest::load
+
+    if [ -n "$only_section" ]; then
+        manifest::require_section "$only_section" || return 64
+    fi
 
     local section title index directive
 
@@ -53,6 +60,49 @@ tools::main() {
     done
 
     printf '\n'
+}
+
+# ------------------------------------------------------------
+
+sections::usage() {
+    cat <<'USAGE'
+Usage: dev sections
+
+List the section ids declared in toolchain.yaml. These are the values
+accepted by --section on doctor, tools and install.
+USAGE
+}
+
+sections::main() {
+    if [ $# -gt 0 ]; then
+        case "$1" in
+            -h|--help) sections::usage; return 0 ;;
+            *) dev::error "unknown option: $1"; sections::usage >&2; return 64 ;;
+        esac
+    fi
+
+    style::init auto
+    manifest::load
+
+    local section title index count
+
+    printf '\n%s%-20s %-28s %s%s\n' \
+        "$C_BOLD" "ID" "TITLE" "TOOLS" "$C_RESET"
+
+    for section in $(manifest::section_ids); do
+        title="$(manifest::section_title "$section")"
+        [ -n "$title" ] || title="$section"
+
+        count=0
+        for index in $(manifest::tool_indices_in_section "$section"); do
+            count=$((count + 1))
+        done
+
+        printf '%-20s %-28s %d\n' "$section" "$title" "$count"
+    done
+
+    printf '\n%sUse `dev doctor --section <id>` to restrict a report.%s\n\n' \
+        "$C_DIM" "$C_RESET"
 }
 
 # ------------------------------------------------------------

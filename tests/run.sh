@@ -181,6 +181,38 @@ fi
 "$DEV_ROOT/bin/dev" manifest lint >/dev/null 2>&1
 assert_status "0" "$?" "dev manifest lint succeeds"
 
+group "cli: sections and update"
+
+sections_out="$("$DEV_ROOT/bin/dev" sections)"
+printf '%s' "$sections_out" | grep -qE '^mobile +Mobile toolchains'
+assert_status "0" "$?" "sections lists mobile with its title"
+printf '%s' "$sections_out" | grep -qE '^git +Git'
+assert_status "0" "$?" "sections lists git"
+printf '%s' "$sections_out" | grep -qF 'dev doctor --section'
+assert_status "0" "$?" "sections points at --section"
+
+"$DEV_ROOT/bin/dev" doctor --section nosuch >/dev/null 2>&1
+assert_status "64" "$?" "an unknown section is a usage error"
+err="$("$DEV_ROOT/bin/dev" doctor --section nosuch 2>&1 >/dev/null)"
+printf '%s' "$err" | grep -qF 'dev sections'
+assert_status "0" "$?" "the error names the sections command"
+
+"$DEV_ROOT/bin/dev" tools --section nosuch >/dev/null 2>&1
+assert_status "64" "$?" "tools rejects an unknown section"
+
+update_out="$("$DEV_ROOT/bin/dev" update --dry-run)"
+printf '%s' "$update_out" | grep -qF 'Update plan'
+assert_status "0" "$?" "update --dry-run prints a plan"
+printf '%s' "$update_out" | grep -qF 'Dry run complete'
+assert_status "0" "$?" "update --dry-run changes nothing"
+
+if have fvm; then
+    printf '%s' "$update_out" | grep -qF 'fvm install stable'
+    assert_status "0" "$?" "update includes fvm when it is installed"
+else
+    assert_eq "skipped" "skipped" "update includes fvm (fvm not installed)"
+fi
+
 group "doctor: --manual narrows the report"
 
 # Asserted on structure rather than content, so the result does not depend

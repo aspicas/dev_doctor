@@ -435,6 +435,8 @@ if [ -n "$needs_new_shell" ]; then
 fi
 printf '  dev doctor        see how far this machine has drifted\n'
 printf '  dev doctor --fix  apply the fixes that are safe to automate\n'
+printf '  dev update        refresh brew, mise, fvm and chezmoi\n'
+printf '  dev sections      the ids `--section` accepts\n'
 printf '  dev install       install what the manifest declares and you lack\n'
 printf '  dev tools         list everything the manifest declares\n'
 printf '  dev help          everything else\n\n'

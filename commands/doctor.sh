@@ -21,6 +21,7 @@ Options:
   --yes              do not prompt when applying fixes
   --deep             include slow checks such as flutter doctor and brew bundle
   --section <id>     restrict the report to a single section
+                     run `dev sections` for the declared ids
   --format <fmt>     human (default) or json
   --no-color         disable colour output
   -h, --help         show this help
@@ -73,6 +74,13 @@ doctor::main() {
 
     manifest::load
     manifest::lint || dev::die "refusing to run against an invalid manifest"
+
+    # Validated before the report starts. Checking afterwards would confuse
+    # an unknown section with a valid one that has no applicable tools here.
+    if [ -n "$DOCTOR_ONLY_SECTION" ]; then
+        manifest::require_section "$DOCTOR_ONLY_SECTION" || exit 64
+    fi
+
     report::init
 
     doctor::intro
@@ -102,17 +110,6 @@ doctor::intro() {
 
 doctor::run_sections() {
     local section title index
-
-    # Validated up front. Checking afterwards would confuse an unknown
-    # section with a valid one that has no applicable tools here, such as
-    # the mobile section on Linux.
-    if [ -n "$DOCTOR_ONLY_SECTION" ]; then
-        if ! manifest::section_ids | grep -qx "$DOCTOR_ONLY_SECTION"; then
-            dev::error "unknown section: $DOCTOR_ONLY_SECTION"
-            dev::log "available: $(manifest::section_ids | tr '\n' ' ')"
-            exit 64
-        fi
-    fi
 
     for section in $(manifest::section_ids); do
         if [ -n "$DOCTOR_ONLY_SECTION" ] && [ "$section" != "$DOCTOR_ONLY_SECTION" ]; then

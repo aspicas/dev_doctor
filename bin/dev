@@ -63,9 +63,10 @@ Usage: dev <command> [options]
 Commands:
   doctor      compare the declared toolchain against reality
   install     install what the manifest declares and this machine lacks
-  update      update packages, runtimes and dotfiles
+  update      update packages, runtimes, Flutter and dotfiles
   tools       list everything the manifest declares
   versions    declared versions against installed versions
+  sections    list the section ids accepted by --section
   setup       guided configuration for things doctor will not automate
   manifest    validate or inspect toolchain.yaml
   help        show this help
@@ -92,6 +93,7 @@ main() {
         update)   update::main "$@" ;;
         tools)    tools::main "$@" ;;
         versions) versions::main "$@" ;;
+        sections) sections::main "$@" ;;
         setup)    setup::main "$@" ;;
         manifest) manifest_cmd::main "$@" ;;
         version|--version|-V) printf 'dev %s\n' "$DEV_VERSION" ;;

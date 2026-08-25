@@ -184,6 +184,7 @@ Then:
 
 ```bash
 dev manifest lint
+dev sections
 dev doctor --section automation
 ```
 
