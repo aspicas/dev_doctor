@@ -35,6 +35,8 @@ brew "starship"
 brew "tmux"
 brew "uv"
 brew "xh"
+brew "xcbeautify"
+brew "xcode-build-server"
 brew "yq"
 brew "zoxide"
 

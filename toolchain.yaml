@@ -799,6 +799,26 @@ tools:
       macos: brew:fastlane
     doc: iOS release automation
 
+  - name: xcbeautify
+    binary: xcbeautify
+    section: mobile
+    category: mobile.ios.automation
+    requirement: optional
+    platforms: [macos]
+    install:
+      macos: brew:xcbeautify
+    doc: Pretty-print xcodebuild output
+
+  - name: xcode-build-server
+    binary: xcode-build-server
+    section: mobile
+    category: mobile.ios
+    requirement: optional
+    platforms: [macos]
+    install:
+      macos: brew:xcode-build-server
+    doc: Build server for sourcekit-lsp with Xcode projects
+
   - name: android-sdk
     binary: sdkmanager
     section: mobile
