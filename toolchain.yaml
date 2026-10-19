@@ -33,6 +33,8 @@ sections:
     title: Terminal
   - id: editor
     title: Editor
+  - id: ai
+    title: AI assistants
   - id: cli
     title: Command line
   - id: data
@@ -154,6 +156,19 @@ tools:
       linux: brew:neovim
     integrations: [nvim.config, nvim.lazyvim, nvim.providers]
     doc: Primary editor
+
+  # ---------------- ai ----------------
+
+  - name: claude-code
+    binary: claude
+    section: ai
+    category: ai.assistant
+    requirement: recommended
+    platforms: [macos, linux]
+    install:
+      macos: brew-cask:claude-code
+      linux: script
+    doc: Agentic coding assistant
 
   # ---------------- cli ----------------
 
