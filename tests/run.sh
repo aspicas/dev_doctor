@@ -244,6 +244,16 @@ assert_status "0" "$?" "bootstrap --local --dry-run succeeds"
 bash -s -- --local < "$DEV_ROOT/scripts/bootstrap.sh" >/dev/null 2>&1
 assert_status "1" "$?" "bootstrap --local refuses to run from a pipe"
 
+group "release: version and changelog"
+
+# The release workflow publishes the CHANGELOG section for the tag, so a
+# version bump without notes must fail here rather than at release time.
+dev_version="$("$DEV_ROOT/bin/dev" --version | sed 's/^dev //')"
+printf '%s' "$dev_version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'
+assert_status "0" "$?" "DEV_VERSION is MAJOR.MINOR.PATCH"
+grep -qxF "## $dev_version" "$DEV_ROOT/CHANGELOG.md"
+assert_status "0" "$?" "CHANGELOG.md has a section for $dev_version"
+
 # ------------------------------------------------------------
 
 printf '\n──────────────────────────────\n'
