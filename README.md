@@ -360,7 +360,7 @@ manifest and implemented as shell functions in `doctor/`.
 ./tests/run.sh
 ```
 
-45 assertions covering the parser (including the pipelines, commas and
+61 assertions covering the parser (including the pipelines, commas and
 quoted strings that break naive implementations), the linter's ability to
 reject a bad manifest, and version extraction against real-world output
 from go, node, java, tmux, neovim and docker.

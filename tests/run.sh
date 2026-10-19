@@ -188,6 +188,8 @@ printf '%s' "$sections_out" | grep -qE '^mobile +Mobile toolchains'
 assert_status "0" "$?" "sections lists mobile with its title"
 printf '%s' "$sections_out" | grep -qE '^git +Git'
 assert_status "0" "$?" "sections lists git"
+printf '%s' "$sections_out" | grep -qE '^ai +AI assistants'
+assert_status "0" "$?" "sections lists ai with its title"
 printf '%s' "$sections_out" | grep -qF 'dev doctor --section'
 assert_status "0" "$?" "sections points at --section"
 
