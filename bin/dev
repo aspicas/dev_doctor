@@ -30,7 +30,7 @@ dev::resolve_root() {
 DEV_ROOT="${DEV_ROOT:-$(dev::resolve_root)}"
 export DEV_ROOT
 
-DEV_VERSION="1.0.0"
+DEV_VERSION="1.1.0"
 
 # shellcheck source=lib/core.sh
 . "$DEV_ROOT/lib/core.sh"

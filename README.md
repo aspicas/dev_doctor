@@ -61,8 +61,8 @@ variables, which are easier to spot at the front of a one-liner than a flag
 buried after `bash -s --`:
 
 ```bash
-# Pin a tag or branch instead of main
-DEV_DOCTOR_REF=v1.0.0 \
+# Pin a release tag or a branch instead of main
+DEV_DOCTOR_REF=v1.1.0 \
   curl -fsSL https://raw.githubusercontent.com/aspicas/dev_doctor/main/scripts/bootstrap.sh | bash
 
 # Install a fork or a private mirror
@@ -260,9 +260,13 @@ dev_doctor/
 ├── toolchain.yaml          the manifest, single source of truth
 ├── Brewfile                generated from the manifest, never hand written
 ├── install.sh              local installer, run from a checkout
+├── CHANGELOG.md            release notes, one section per version
 ├── scripts/
 │   └── bootstrap.sh        remote one-line installer (curl | bash)
 ├── justfile
+├── .github/workflows/
+│   ├── ci.yml              lint and tests on macOS and Linux
+│   └── release.yml         publishes a release for each vX.Y.Z tag
 │
 ├── bin/
 │   └── dev                 dispatcher
@@ -360,10 +364,40 @@ manifest and implemented as shell functions in `doctor/`.
 ./tests/run.sh
 ```
 
-61 assertions covering the parser (including the pipelines, commas and
+63 assertions covering the parser (including the pipelines, commas and
 quoted strings that break naive implementations), the linter's ability to
 reject a bad manifest, and version extraction against real-world output
 from go, node, java, tmux, neovim and docker.
+
+CI runs the same gate as `just check` (manifest lint, shellcheck and the
+tests) on macOS and Linux for every pull request and every push to `main`.
+
+## Releases
+
+Versions follow `MAJOR.MINOR.PATCH`, and `dev --version` prints the one in
+`bin/dev`. Published versions are listed on the
+[releases page](https://github.com/aspicas/dev_doctor/releases), and any of
+them can be installed with `DEV_DOCTOR_REF=vX.Y.Z` or `--ref vX.Y.Z`.
+
+To cut a release:
+
+1. Bump `DEV_VERSION` in `bin/dev`.
+2. Add a `## X.Y.Z` section to `CHANGELOG.md`. The tests fail without it.
+3. Merge to `main`, then tag and push:
+
+   ```bash
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+The release workflow runs the checks again, refuses a tag that does not
+match `DEV_VERSION`, and publishes the changelog section as the release
+notes.
+
+There are no GitHub Packages. The tool is a set of shell scripts installed
+from a git checkout, so a container or language package registry would add
+a second distribution channel without adding anything the tag does not
+already give.
 
 ## The reference document
 

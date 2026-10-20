@@ -202,7 +202,15 @@ assert_status "0" "$?" "the error names the sections command"
 "$DEV_ROOT/bin/dev" tools --section nosuch >/dev/null 2>&1
 assert_status "64" "$?" "tools rejects an unknown section"
 
-update_out="$("$DEV_ROOT/bin/dev" update --dry-run)"
+# update refuses to run when none of its managers exist, which is the case
+# on a bare CI runner. A stub brew keeps the plan non-empty everywhere, and
+# --dry-run guarantees it is never executed.
+stub_bin="$(mktemp -d "${TMPDIR:-/tmp}/dev-doctor-test.XXXXXX")"
+printf '#!/bin/sh\nexit 0\n' > "$stub_bin/brew"
+chmod +x "$stub_bin/brew"
+
+update_out="$(PATH="$stub_bin:$PATH" "$DEV_ROOT/bin/dev" update --dry-run)"
+rm -rf "$stub_bin"
 printf '%s' "$update_out" | grep -qF 'Update plan'
 assert_status "0" "$?" "update --dry-run prints a plan"
 printf '%s' "$update_out" | grep -qF 'Dry run complete'
@@ -243,6 +251,16 @@ assert_status "0" "$?" "bootstrap --local --dry-run succeeds"
 # so it must refuse rather than expand to an unrelated directory.
 bash -s -- --local < "$DEV_ROOT/scripts/bootstrap.sh" >/dev/null 2>&1
 assert_status "1" "$?" "bootstrap --local refuses to run from a pipe"
+
+group "release: version and changelog"
+
+# The release workflow publishes the CHANGELOG section for the tag, so a
+# version bump without notes must fail here rather than at release time.
+dev_version="$("$DEV_ROOT/bin/dev" --version | sed 's/^dev //')"
+printf '%s' "$dev_version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'
+assert_status "0" "$?" "DEV_VERSION is MAJOR.MINOR.PATCH"
+grep -qxF "## $dev_version" "$DEV_ROOT/CHANGELOG.md"
+assert_status "0" "$?" "CHANGELOG.md has a section for $dev_version"
 
 # ------------------------------------------------------------
 

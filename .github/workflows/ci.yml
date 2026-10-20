@@ -1,0 +1,40 @@
+# Runs the same gate as `just check` on both supported platforms.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: |
+          if ! command -v shellcheck >/dev/null 2>&1; then
+            if command -v brew >/dev/null 2>&1; then
+              brew install shellcheck
+            else
+              sudo apt-get update && sudo apt-get install -y shellcheck
+            fi
+          fi
+
+      - name: Lint manifest
+        run: ./bin/dev manifest lint
+
+      - name: Lint shell
+        run: |
+          shellcheck --severity=warning --shell=bash --external-sources \
+            bin/dev install.sh scripts/bootstrap.sh tests/run.sh \
+            lib/*.sh doctor/*.sh commands/*.sh
+
+      - name: Test
+        run: ./tests/run.sh
