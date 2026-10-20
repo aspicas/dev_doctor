@@ -202,7 +202,15 @@ assert_status "0" "$?" "the error names the sections command"
 "$DEV_ROOT/bin/dev" tools --section nosuch >/dev/null 2>&1
 assert_status "64" "$?" "tools rejects an unknown section"
 
-update_out="$("$DEV_ROOT/bin/dev" update --dry-run)"
+# update refuses to run when none of its managers exist, which is the case
+# on a bare CI runner. A stub brew keeps the plan non-empty everywhere, and
+# --dry-run guarantees it is never executed.
+stub_bin="$(mktemp -d "${TMPDIR:-/tmp}/dev-doctor-test.XXXXXX")"
+printf '#!/bin/sh\nexit 0\n' > "$stub_bin/brew"
+chmod +x "$stub_bin/brew"
+
+update_out="$(PATH="$stub_bin:$PATH" "$DEV_ROOT/bin/dev" update --dry-run)"
+rm -rf "$stub_bin"
 printf '%s' "$update_out" | grep -qF 'Update plan'
 assert_status "0" "$?" "update --dry-run prints a plan"
 printf '%s' "$update_out" | grep -qF 'Dry run complete'
