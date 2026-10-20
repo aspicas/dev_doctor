@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/icon.svg" alt="dev doctor" width="128" height="128">
+</p>
+
 # dev doctor
 
 A diagnostic and provisioning tool for a terminal-first development
@@ -298,7 +302,8 @@ dev_doctor/
 │
 ├── docs/
 │   ├── manifest-schema.md
-│   └── environment.reference.yaml
+│   ├── environment.reference.yaml
+│   └── assets/             icon and social preview, SVG sources and PNGs
 │
 └── tests/
     └── run.sh
@@ -398,6 +403,28 @@ There are no GitHub Packages. The tool is a set of shell scripts installed
 from a git checkout, so a container or language package registry would add
 a second distribution channel without adding anything the tag does not
 already give.
+
+## Icon and social preview
+
+`docs/assets/` holds the project icon and a 1280×640 banner, each as an
+SVG source and a PNG export. The PNGs exist because GitHub's social
+preview and LinkedIn's project media do not accept SVG. Upload
+`social-preview.png` under *Settings → General → Social preview* and
+LinkedIn picks it up from the repository link. LinkedIn crops link
+previews to 1.91:1, so the banner keeps its content clear of the left and
+right edges.
+
+To regenerate the PNGs after editing an SVG:
+
+```bash
+chrome="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+cd docs/assets
+"$chrome" --headless --hide-scrollbars --default-background-color=00000000 \
+  --force-device-scale-factor=2 --window-size=256,256 \
+  --screenshot="$PWD/icon-512.png" "file://$PWD/icon.svg"
+"$chrome" --headless --hide-scrollbars --window-size=1280,640 \
+  --screenshot="$PWD/social-preview.png" "file://$PWD/social-preview.svg"
+```
 
 ## The reference document
 
