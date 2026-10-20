@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title">
+  <title id="title">dev doctor</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1e293b"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <!-- window controls, coloured like the report's ✗ ⚠ ✓ -->
+  <circle cx="48" cy="48" r="9" fill="#f87171"/>
+  <circle cx="74" cy="48" r="9" fill="#fbbf24"/>
+  <circle cx="100" cy="48" r="9" fill="#4ade80"/>
+  <!-- prompt -->
+  <polyline points="44,110 70,134 44,158" fill="none" stroke="#e2e8f0" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- heartbeat -->
+  <polyline points="94,134 124,134 140,98 160,180 176,116 188,134 214,134" fill="none" stroke="#4ade80" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
